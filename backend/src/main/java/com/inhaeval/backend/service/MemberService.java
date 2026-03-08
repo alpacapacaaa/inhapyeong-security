@@ -2,13 +2,11 @@ package com.inhaeval.backend.service;
 
 import com.inhaeval.backend.domain.EmailVerification;
 import com.inhaeval.backend.domain.Member;
-import com.inhaeval.backend.dto.LoginRequest;
-import com.inhaeval.backend.dto.LoginResponse;
-import com.inhaeval.backend.dto.SignupRequest;
-import com.inhaeval.backend.dto.SignupResponse;
+import com.inhaeval.backend.dto.*;
 import com.inhaeval.backend.exception.CustomException;
 import com.inhaeval.backend.repository.EmailVerificationRepository;
 import com.inhaeval.backend.repository.MemberRepository;
+import com.inhaeval.backend.repository.PhoneVerificationRepository;
 import com.inhaeval.backend.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +22,8 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final EmailVerificationRepository emailVerificationRepository;
+    private final PhoneVerificationRepository phoneVerificationRepository;
+    private final PhoneVerificationService phoneVerificationService;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
     private final JwtUtil jwtUtil;
@@ -94,5 +94,30 @@ public class MemberService {
                 .nickname(member.getNickname())
                 .accessToken(token)
                 .build();
+    }
+
+    // ① 이메일 + 번호 일치 확인 후 SMS 발송
+    @Transactional
+    public void sendPasswordResetSms(String email, String phoneNumber) {
+        memberRepository.findByEmailAndPhoneNumber(email, phoneNumber)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "이메일 또는 전화번호가 일치하지 않습니다."));
+
+        phoneVerificationService.sendCode(phoneNumber);
+    }
+
+    // ③ 비밀번호 변경
+    @Transactional
+    public void resetPassword(PasswordResetRequest request) {
+        if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "비밀번호가 일치하지 않습니다.");
+        }
+
+        phoneVerificationRepository.findByPhoneNumberAndIsUsedTrue(request.getPhoneNumber())
+                .orElseThrow(() -> new CustomException(HttpStatus.FORBIDDEN, "휴대폰 인증이 필요합니다."));
+
+        Member member = memberRepository.findByPhoneNumber(request.getPhoneNumber())
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다."));
+
+        member.updatePassword(passwordEncoder.encode(request.getNewPassword()));
     }
 }
