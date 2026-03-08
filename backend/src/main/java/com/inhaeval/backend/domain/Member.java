@@ -66,4 +66,5 @@ public class Member {
     public void deductPoints(int amount) { this.points -= amount; }
     public void verify() { this.isVerified = true; }
     public void deactivate() { this.isActive = false; }
+    public void passwordUpdate(String newPassword) { this.password = newPassword; }
 }
