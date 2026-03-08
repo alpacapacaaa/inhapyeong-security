@@ -96,7 +96,7 @@ public class MemberService {
                 .build();
     }
 
-    // ① 이메일 + 번호 일치 확인 후 SMS 발송
+    // 이메일 + 번호 일치 확인 후 SMS 발송
     @Transactional
     public void sendPasswordResetSms(String email, String phoneNumber) {
         memberRepository.findByEmailAndPhoneNumber(email, phoneNumber)
@@ -105,7 +105,7 @@ public class MemberService {
         phoneVerificationService.sendCode(phoneNumber);
     }
 
-    // ③ 비밀번호 변경
+    // 비밀번호 일치 확인 + 본인 확인 + 비밀번호 변겅
     @Transactional
     public void resetPassword(PasswordResetRequest request) {
         if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
