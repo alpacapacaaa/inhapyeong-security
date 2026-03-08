@@ -3,7 +3,9 @@ package com.inhaeval.backend.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import lombok.Getter;
 
+@Getter
 public class EmailSendRequest {
 
     @NotBlank(message = "이메일을 입력해주세요")
