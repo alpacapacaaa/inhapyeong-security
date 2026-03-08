@@ -59,4 +59,24 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    // 이메일+번호 확인 후 SMS 발송
+    @PostMapping("/password/send")
+    public ResponseEntity<Void> sendPasswordResetSms(@RequestBody @Valid PasswordSendRequest request) {
+        memberService.sendPasswordResetSms(request.getEmail(), request.getPhoneNumber());
+        return ResponseEntity.ok().build();
+    }
+
+    // 인증번호 검증
+    @PostMapping("/password/verify")
+    public ResponseEntity<Void> verifyPasswordReset(@RequestBody @Valid PasswordVerifyRequest request) {
+        phoneVerificationService.verifyCode(request.getPhoneNumber(), request.getCode());
+        return ResponseEntity.ok().build();
+    }
+
+    // 비밀번호 변경
+    @PostMapping("/password/reset")
+    public ResponseEntity<Void> resetPassword(@RequestBody @Valid PasswordResetRequest request) {
+        memberService.resetPassword(request);
+        return ResponseEntity.ok().build();
+    }
 }
