@@ -54,6 +54,10 @@ public class MemberService {
             throw new CustomException(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다.");
         }
 
+        EmailVerification verification = emailVerificationRepository
+                .findByEmailAndIsUsedTrue(request.getEmail())
+                .orElseThrow(() -> new CustomException(HttpStatus.FORBIDDEN, "이메일 인증이 필요합니다"));
+
         Member member = Member.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
@@ -62,11 +66,15 @@ public class MemberService {
                 .build();
         memberRepository.save(member);
 
+        member.verify();
+        member.addPoints(50);
+
         return SignupResponse.builder()
                 .accessToken(jwtUtil.generateToken(member.getEmail()))
                 .nickname(member.getNickname())
                 .points(member.getPoints())
                 .build();
+
     }
 
     @Transactional(readOnly = true)

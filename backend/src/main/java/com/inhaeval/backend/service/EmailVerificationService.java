@@ -32,11 +32,6 @@ public class EmailVerificationService {
             throw new CustomException(HttpStatus.BAD_REQUEST, "만료된 토큰입니다.");
         }
 
-        Member member = memberRepository.findByEmail(verification.getEmail())
-                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다."));
-
-        member.verify();
-        member.addPoints(50);
         verification.use();
     }
 }
