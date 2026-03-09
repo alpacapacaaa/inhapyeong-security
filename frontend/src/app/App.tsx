@@ -8,6 +8,7 @@ import { CourseDetailPage } from './pages/CourseDetailPage';
 import { ReviewWritePage } from './pages/ReviewWritePage';
 import { MyPage } from './pages/MyPage';
 import { AuthPage } from './pages/AuthPage';
+import { EmailVerifyPage } from './pages/EmailVerifyPage';
 import { toast } from 'sonner';
 import { userService } from './api/api';
 import { Loader2 } from 'lucide-react';
@@ -64,6 +65,7 @@ export default function App() {
           <Route path="/review/write/:courseId" element={isLoggedIn ? <ReviewWritePage /> : <Navigate to="/auth?mode=login" />} />
           <Route path="/mypage" element={isLoggedIn ? <MyPage /> : <Navigate to="/auth?mode=login" />} />
           <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
+          <Route path="/auth/email/verify" element={<EmailVerifyPage />} />
         </Routes>
         <Toaster />
       </div>

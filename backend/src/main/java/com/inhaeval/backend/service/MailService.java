@@ -17,7 +17,7 @@ public class MailService {
 
     public void sendVerificationEmail(String toEmail, String token) {
 
-        String verifyUrl = "http://localhost:8080/api/auth/email/verify?token=" + token;
+        String verifyUrl = "http://localhost:5173/auth/email/verify?token=" + token;
 
         String htmlContent = "<h2>인하대 강의평가 이메일 인증</h2>" +
                 "<p>아래 버튼을 클릭하면 인증이 완료됩니다.</p>" +
