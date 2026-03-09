@@ -35,8 +35,21 @@ export interface Review {
   assignmentType?: string;
   textbook?: string;
   oneLineTip?: string;
+  examInfo?: string;
+  examKeywords?: string[];
   recommendFor?: string[];
   notRecommendFor?: string[];
+
+  // Hexagon numerical stats (1-5)
+  diffScore?: number;
+  teachingScore?: number;
+  gradScore?: number;
+  workScore?: number;
+  prerequisiteScore?: number;
+  depthScore?: number;
+  timeInvestScore?: number;
+  attScore?: number;
+  pastExamScore?: number;
 }
 
 export interface User {
