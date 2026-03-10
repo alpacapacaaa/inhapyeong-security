@@ -4,6 +4,116 @@ import { mockCourses, mockReviews, mockUser, mockPointHistory, mockNotices, mock
 // Simulate API delay
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8080';
+const AUTH_TOKEN_KEY = 'auth_token';
+const AUTH_USER_KEY = 'auth_user';
+export const EMAIL_VERIFIED_KEY = 'email_verified';
+
+interface AuthResponse {
+  accessToken: string;
+  nickname: string;
+  points: number;
+}
+
+interface SignupPayload {
+  email: string;
+  password: string;
+  nickname: string;
+  department: string;
+  phoneNumber: string;
+}
+
+interface PasswordResetPayload {
+  phoneNumber: string;
+  newPassword: string;
+  newPasswordConfirm: string;
+}
+
+const parseErrorMessage = (data: unknown): string => {
+  if (!data || typeof data !== 'object') {
+    return '요청 처리 중 오류가 발생했습니다.';
+  }
+
+  const record = data as Record<string, unknown>;
+
+  if (typeof record.message === 'string') {
+    return record.message;
+  }
+
+  const firstMessage = Object.values(record).find((value) => typeof value === 'string');
+  return typeof firstMessage === 'string' ? firstMessage : '요청 처리 중 오류가 발생했습니다.';
+};
+
+async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+    ...init,
+  });
+
+  if (!response.ok) {
+    let errorData: unknown = null;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = null;
+    }
+    throw new Error(parseErrorMessage(errorData));
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    return undefined as T;
+  }
+
+  return response.json() as Promise<T>;
+}
+
+const saveAuthSession = (token: string, user: User) => {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+};
+
+const clearAuthSession = () => {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_USER_KEY);
+};
+
+const loadStoredUser = (): User | null => {
+  const raw = localStorage.getItem(AUTH_USER_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as User;
+  } catch {
+    localStorage.removeItem(AUTH_USER_KEY);
+    return null;
+  }
+};
+
+const buildSessionUser = (
+  auth: AuthResponse,
+  overrides: Partial<Pick<User, 'email' | 'department' | 'hasPass' | 'passExpiryDate'>> = {},
+): User => ({
+  ...mockUser,
+  ...overrides,
+  id: overrides.email ?? mockUser.id,
+  email: overrides.email ?? mockUser.email,
+  nickname: auth.nickname,
+  department: overrides.department ?? mockUser.department,
+  points: auth.points,
+  hasPass: overrides.hasPass ?? false,
+  passExpiryDate: overrides.passExpiryDate,
+});
+
 // In-memory storage for the session (so updates work locally)
 let courses = [...mockCourses];
 let reviews = [...mockReviews];
@@ -104,84 +214,96 @@ export const reviewService = {
 
 export const userService = {
   getCurrentUser: async (): Promise<User | null> => {
-    await delay(200);
-    // Check if user is logged in (mock)
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     if (!token) return null;
+
+    const storedUser = loadStoredUser();
+    if (storedUser) {
+      currentUser = storedUser;
+      return storedUser;
+    }
+
     return currentUser;
   },
 
   login: async (email: string, password?: string): Promise<User> => {
-    await delay(500);
-    // Simple mock logic
-    if (email === 'fail@inha.edu') {
-      throw new Error('존재하지 않는 이메일입니다.');
-    }
-    if (password === 'wrong') {
-      throw new Error('비밀번호가 틀렸습니다.');
-    }
-    localStorage.setItem('auth_token', 'mock-token');
+    const auth = await apiRequest<AuthResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+
+    currentUser = buildSessionUser(auth, { email });
+    saveAuthSession(auth.accessToken, currentUser);
+
     return currentUser;
   },
 
   logout: async (): Promise<void> => {
-    await delay(200);
-    localStorage.removeItem('auth_token');
+    clearAuthSession();
   },
 
-  signup: async (user: Partial<User>): Promise<User> => {
-    await delay(800);
-    const newUser = {
-      ...mockUser,
-      ...user,
-      id: Math.random().toString(36).substr(2, 9),
-    } as User;
-    // Update current user for the session
-    currentUser = newUser;
-    localStorage.setItem('auth_token', 'mock-token');
-    return newUser;
+  signup: async (payload: SignupPayload): Promise<User> => {
+    const auth = await apiRequest<AuthResponse>('/api/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    currentUser = buildSessionUser(auth, {
+      email: payload.email,
+      department: payload.department,
+    });
+    saveAuthSession(auth.accessToken, currentUser);
+
+    return currentUser;
   },
 
   sendVerificationEmail: async (email: string): Promise<void> => {
-    await delay(600);
-    if (!email.endsWith('@inha.edu')) {
-      throw new Error('인하대 이메일(@inha.edu) 형식이 아닙니다.');
-    }
-    console.log(`Verification email sent to ${email} (Code: 123456)`);
-    // Success
+    await apiRequest<void>('/api/auth/email/send', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
   },
 
-  verifyEmailCode: async (email: string, code: string): Promise<boolean> => {
-    await delay(400);
-    if (code === '123456') return true;
-    throw new Error('인증코드가 일치하지 않습니다.');
+  verifyEmailToken: async (token: string): Promise<void> => {
+    const encodedToken = encodeURIComponent(token);
+    await apiRequest<void>(`/api/auth/email/verify?token=${encodedToken}`, {
+      method: 'GET',
+    });
   },
 
   sendVerificationPhone: async (phone: string): Promise<void> => {
-    await delay(600);
-    console.log(`Verification SMS sent to ${phone} (Code: 111111)`);
-    // Success
+    await apiRequest<void>('/api/auth/phone/send', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber: phone }),
+    });
   },
 
   verifyPhoneCode: async (phone: string, code: string): Promise<boolean> => {
-    await delay(400);
-    if (code === '111111') return true;
-    throw new Error('인증코드가 일치하지 않습니다.');
+    await apiRequest<void>('/api/auth/phone/verify', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber: phone, code }),
+    });
+    return true;
   },
 
   findPassword: async (email: string, phone: string): Promise<void> => {
-    await delay(600);
-    if (email !== mockUser.email || (phone !== '01012345678' && phone !== '010-1234-5678')) {
-      throw new Error('일치하는 회원 정보가 없습니다.');
-    }
-    // Success
+    await apiRequest<void>('/api/auth/password/send', {
+      method: 'POST',
+      body: JSON.stringify({ email, phoneNumber: phone }),
+    });
   },
 
-  resetPassword: async (email: string, newPassword: string): Promise<void> => {
-    await delay(600);
-    console.log(`Password reset for ${email} to ${newPassword}`);
-    // Update mock current user password (conceptually)
-    // Success
+  resetPassword: async (_email: string, newPassword: string, phoneNumber?: string, newPasswordConfirm?: string): Promise<void> => {
+    const payload: PasswordResetPayload = {
+      phoneNumber: phoneNumber ?? '',
+      newPassword,
+      newPasswordConfirm: newPasswordConfirm ?? newPassword,
+    };
+
+    await apiRequest<void>('/api/auth/password/reset', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 
   purchasePass: async (): Promise<User> => {
@@ -268,7 +390,7 @@ export const userService = {
     if (password === 'wrong') {
       throw new Error('비밀번호가 틀렸습니다.');
     }
-    localStorage.removeItem('auth_token');
+    clearAuthSession();
     // Reset to initial state
     currentUser = { ...mockUser };
   },
