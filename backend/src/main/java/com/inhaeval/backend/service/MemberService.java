@@ -54,6 +54,10 @@ public class MemberService {
             throw new CustomException(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다.");
         }
 
+        if (memberRepository.existsByPhoneNumber(request.getPhoneNumber())) {
+            throw new CustomException(HttpStatus.CONFLICT, "이미 사용 중인 전화번호입니다.");
+        }
+
         EmailVerification verification = emailVerificationRepository
                 .findByEmailAndIsUsedTrue(request.getEmail())
                 .orElseThrow(() -> new CustomException(HttpStatus.FORBIDDEN, "이메일 인증이 필요합니다"));
