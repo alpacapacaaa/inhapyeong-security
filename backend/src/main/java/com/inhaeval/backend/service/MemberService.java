@@ -127,7 +127,7 @@ public class MemberService {
             throw new CustomException(HttpStatus.BAD_REQUEST, "비밀번호가 일치하지 않습니다.");
         }
 
-        phoneVerificationRepository.findByPhoneNumberAndIsUsedTrue(request.getPhoneNumber())
+        phoneVerificationRepository.findTopByPhoneNumberAndIsUsedTrueOrderByIdDesc(request.getPhoneNumber())
                 .orElseThrow(() -> new CustomException(HttpStatus.FORBIDDEN, "휴대폰 인증이 필요합니다."));
 
         Member member = memberRepository.findByPhoneNumber(request.getPhoneNumber())

@@ -22,6 +22,8 @@ public class PhoneVerificationService {
     public void sendCode(String phoneNumber) {
         String code = generateCode();       // 6자리 랜덤 인증번호 생성
 
+        phoneVerificationRepository.deleteByPhoneNumber(phoneNumber);
+
         PhoneVerification verification = PhoneVerification.builder()
                 .phoneNumber(phoneNumber)
                 .code(code)
