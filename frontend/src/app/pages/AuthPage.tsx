@@ -5,7 +5,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { departments } from '../data/mockData';
-import { EMAIL_VERIFIED_KEY, userService } from '../api/api';
+import { EMAIL_PENDING_KEY, EMAIL_VERIFIED_KEY, SIGNUP_DRAFT_KEY, userService } from '../api/api';
 import { toast } from 'sonner';
 import { ArrowRight, CheckCircle2, GraduationCap, Loader2, Lock, Mail } from 'lucide-react';
 
@@ -15,19 +15,51 @@ interface AuthPageProps {
 
 type AuthMode = 'login' | 'signup' | 'find-password';
 
+interface SignupDraft {
+  email: string;
+  nickname: string;
+  department: string;
+  phone: string;
+}
+
 export function AuthPage({ onLogin }: AuthPageProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialMode = (searchParams.get('mode') as AuthMode) || 'login';
-  const initialEmailVerified =
-    typeof window !== 'undefined' &&
-    (localStorage.getItem(EMAIL_VERIFIED_KEY) === 'true' || searchParams.get('verified') === 'email');
+  const initialSignupDraft: SignupDraft =
+    typeof window !== 'undefined'
+      ? (() => {
+          const raw = localStorage.getItem(SIGNUP_DRAFT_KEY);
+          if (!raw) {
+            return { email: '', nickname: '', department: '', phone: '' };
+          }
 
-  const [email, setEmail] = useState('');
+          try {
+            const parsed = JSON.parse(raw) as Partial<SignupDraft>;
+            return {
+              email: parsed.email ?? '',
+              nickname: parsed.nickname ?? '',
+              department: parsed.department ?? '',
+              phone: parsed.phone ?? '',
+            };
+          } catch {
+            localStorage.removeItem(SIGNUP_DRAFT_KEY);
+            return { email: '', nickname: '', department: '', phone: '' };
+          }
+        })()
+      : { email: '', nickname: '', department: '', phone: '' };
+  const initialStoredSignupEmail =
+    typeof window !== 'undefined' && initialMode === 'signup'
+      ? localStorage.getItem(EMAIL_PENDING_KEY) ?? localStorage.getItem(EMAIL_VERIFIED_KEY) ?? initialSignupDraft.email
+      : '';
+  const initialVerifiedEmail = typeof window !== 'undefined' ? localStorage.getItem(EMAIL_VERIFIED_KEY) ?? '' : '';
+  const initialEmailVerified = !!initialStoredSignupEmail && initialVerifiedEmail === initialStoredSignupEmail;
+
+  const [email, setEmail] = useState(initialStoredSignupEmail);
   const [password, setPassword] = useState('');
-  const [nickname, setNickname] = useState('');
-  const [department, setDepartment] = useState('');
-  const [phone, setPhone] = useState('');
+  const [nickname, setNickname] = useState(initialSignupDraft.nickname);
+  const [department, setDepartment] = useState(initialSignupDraft.department);
+  const [phone, setPhone] = useState(initialSignupDraft.phone);
   const [isLoading, setIsLoading] = useState(false);
 
   const [isEmailVerified, setIsEmailVerified] = useState(initialEmailVerified);
@@ -53,6 +85,8 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     setPhone('');
     setIsLoading(false);
     localStorage.removeItem(EMAIL_VERIFIED_KEY);
+    localStorage.removeItem(EMAIL_PENDING_KEY);
+    localStorage.removeItem(SIGNUP_DRAFT_KEY);
     setIsEmailVerified(false);
     setIsEmailSent(false);
     setIsPhoneVerified(false);
@@ -63,6 +97,27 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     setNewPasswordConfirm('');
     setSignupStep(1);
   };
+
+  useEffect(() => {
+    if (!isSignup) {
+      return;
+    }
+
+    const draft: SignupDraft = {
+      email,
+      nickname,
+      department,
+      phone,
+    };
+
+    const hasValue = Object.values(draft).some(Boolean);
+    if (!hasValue) {
+      localStorage.removeItem(SIGNUP_DRAFT_KEY);
+      return;
+    }
+
+    localStorage.setItem(SIGNUP_DRAFT_KEY, JSON.stringify(draft));
+  }, [department, email, isSignup, nickname, phone]);
 
   const changeMode = (mode: AuthMode) => {
     resetStates();
@@ -91,6 +146,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     }
 
     localStorage.removeItem(EMAIL_VERIFIED_KEY);
+    localStorage.setItem(EMAIL_PENDING_KEY, email);
     setIsEmailVerified(false);
     setIsLoading(true);
     try {
@@ -104,42 +160,21 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     }
   };
 
-  const handleConfirmEmailVerification = () => {
-    if (!isEmailSent) {
-      toast.error('먼저 인증 메일을 발송해주세요.');
-      return;
-    }
-
-    const isVerified = localStorage.getItem(EMAIL_VERIFIED_KEY) === 'true';
-
-    if (!isVerified) {
-      toast.error('아직 이메일 인증이 완료되지 않았습니다. 메일의 인증 링크를 먼저 눌러주세요.');
-      return;
-    }
-
-    setIsEmailVerified(true);
-    toast.success('이메일 인증이 완료되었습니다. 휴대폰 인증을 진행해주세요.');
-  };
-
   useEffect(() => {
     const syncEmailVerificationState = () => {
-      const isVerified = localStorage.getItem(EMAIL_VERIFIED_KEY) === 'true';
+      const isVerified = !!email && localStorage.getItem(EMAIL_VERIFIED_KEY) === email;
       setIsEmailVerified(isVerified);
-      if (isVerified) {
-        setIsEmailSent(true);
-      }
+      setIsEmailSent(!!email && localStorage.getItem(EMAIL_PENDING_KEY) === email);
     };
 
     const syncEmailVerification = (event: StorageEvent) => {
-      if (event.key !== EMAIL_VERIFIED_KEY) {
+      if (event.key !== EMAIL_VERIFIED_KEY && event.key !== EMAIL_PENDING_KEY) {
         return;
       }
 
-      const isVerified = event.newValue === 'true';
+      const isVerified = !!email && localStorage.getItem(EMAIL_VERIFIED_KEY) === email;
       setIsEmailVerified(isVerified);
-      if (isVerified) {
-        setIsEmailSent(true);
-      }
+      setIsEmailSent(!!email && localStorage.getItem(EMAIL_PENDING_KEY) === email);
     };
 
     syncEmailVerificationState();
@@ -151,7 +186,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
       window.removeEventListener('focus', syncEmailVerificationState);
       document.removeEventListener('visibilitychange', syncEmailVerificationState);
     };
-  }, []);
+  }, [email]);
 
   const handleSendPhoneCode = async () => {
     if (!requirePhoneNumber()) {
@@ -288,6 +323,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
           department,
           phoneNumber: phone,
         });
+        localStorage.removeItem(EMAIL_VERIFIED_KEY);
+        localStorage.removeItem(EMAIL_PENDING_KEY);
+        localStorage.removeItem(SIGNUP_DRAFT_KEY);
         onLogin?.();
         toast.success('회원가입이 완료되었습니다.');
         navigate('/');
@@ -490,9 +528,13 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                           placeholder="example@inha.edu"
                           value={email}
                           onChange={(e) => {
-                            setEmail(e.target.value);
+                            const nextEmail = e.target.value;
+                            setEmail(nextEmail);
                             setIsEmailSent(false);
-                            localStorage.removeItem(EMAIL_VERIFIED_KEY);
+                            if (localStorage.getItem(EMAIL_VERIFIED_KEY) !== nextEmail) {
+                              localStorage.removeItem(EMAIL_VERIFIED_KEY);
+                            }
+                            localStorage.removeItem(EMAIL_PENDING_KEY);
                             setIsEmailVerified(false);
                           }}
                           disabled={isLoading}
@@ -510,19 +552,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                       {isEmailSent && (
                         <div className="space-y-3 rounded-xl bg-white p-3 border border-indigo-100">
                           {!isEmailVerified ? (
-                            <>
-                              <p className="text-xs leading-5 text-slate-600">
-                                메일함에서 인증 링크를 클릭한 뒤 아래 버튼을 눌러 다음 단계로 진행하세요.
-                              </p>
-                              <Button
-                                type="button"
-                                onClick={handleConfirmEmailVerification}
-                                variant="outline"
-                                className="w-full rounded-xl border-indigo-200 text-indigo-700"
-                              >
-                                링크 확인 완료
-                              </Button>
-                            </>
+                            <p className="text-xs leading-5 text-slate-600">
+                              메일의 인증 링크를 누르면 이 화면이 자동으로 갱신됩니다. 인증 후 원래 창으로 돌아와주세요.
+                            </p>
                           ) : (
                             <p className="text-xs font-semibold text-emerald-600">이메일 인증이 완료되었습니다.</p>
                           )}
