@@ -27,7 +27,7 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
-    @Value("${app.allowed-origins:http://localhost:5173}")
+    @Value("${app.allowed-origins:http://localhost:5173,https://inha-eval.vercel.app}")
     private String allowedOrigins;
 
     @Bean
