@@ -4,6 +4,7 @@ import com.inhaeval.backend.exception.CustomException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -14,10 +15,11 @@ import org.springframework.stereotype.Service;
 public class MailService {
 
     private final JavaMailSender mailSender;
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
 
     public void sendVerificationEmail(String toEmail, String token) {
-
-        String verifyUrl = "http://52.63.156.200:5173/api/auth/email/verify?token=" + token;
+        String verifyUrl = frontendUrl + "/auth/email/verify?token=" + token;
 
         String htmlContent = "<h2>인하대 강의평가 이메일 인증</h2>" +
                 "<p>아래 버튼을 클릭하면 인증이 완료됩니다.</p>" +

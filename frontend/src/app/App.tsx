@@ -46,6 +46,10 @@ export default function App() {
     }
   };
 
+  const handleAccountDeleted = () => {
+    setIsLoggedIn(false);
+  };
+
   if (isLoggedIn === null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -63,7 +67,7 @@ export default function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/course/:id" element={<CourseDetailPage />} />
           <Route path="/review/write/:courseId" element={isLoggedIn ? <ReviewWritePage /> : <Navigate to="/auth?mode=login" />} />
-          <Route path="/mypage" element={isLoggedIn ? <MyPage /> : <Navigate to="/auth?mode=login" />} />
+          <Route path="/mypage" element={isLoggedIn ? <MyPage onAccountDeleted={handleAccountDeleted} /> : <Navigate to="/auth?mode=login" />} />
           <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
           <Route path="/auth/email/verify" element={<EmailVerifyPage />} />
         </Routes>

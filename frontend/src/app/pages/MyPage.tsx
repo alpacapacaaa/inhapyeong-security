@@ -29,7 +29,11 @@ const getPointIcon = (desc: string): React.ReactNode => {
   return <Coins className="w-4 h-4 text-slate-400" />;
 };
 
-export function MyPage() {
+interface MyPageProps {
+  onAccountDeleted?: () => void;
+}
+
+export function MyPage({ onAccountDeleted }: MyPageProps) {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [pointHistory, setPointHistory] = useState<PointHistory[]>([]);
@@ -190,7 +194,8 @@ export function MyPage() {
     try {
       await userService.deleteAccount(deletePw);
       toast.success('회원 탈퇴가 완료되었습니다.');
-      navigate('/');
+      onAccountDeleted?.();
+      navigate('/auth?mode=login', { replace: true });
     } catch (e: any) { toast.error(e.message); }
     finally { setIsSaving(false); }
   };
