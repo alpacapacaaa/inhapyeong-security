@@ -8,6 +8,8 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?
 const AUTH_TOKEN_KEY = 'auth_token';
 const AUTH_USER_KEY = 'auth_user';
 export const EMAIL_VERIFIED_KEY = 'email_verified';
+export const EMAIL_PENDING_KEY = 'email_pending';
+export const SIGNUP_DRAFT_KEY = 'signup_draft';
 
 interface AuthResponse {
   accessToken: string;
