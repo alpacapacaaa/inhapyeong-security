@@ -10,5 +10,6 @@ public interface EmailVerificationRepository extends JpaRepository<EmailVerifica
     Optional<EmailVerification> findByToken(String token);
     // 이 이메일의 토큰이 아직 유효한지 확인
     Optional<EmailVerification> findTopByEmailOrderByCreatedAtDesc(String email);
-    Optional<EmailVerification> findByEmailAndIsUsedTrue(String email);
+    Optional<EmailVerification> findTopByEmailAndIsUsedTrueOrderByCreatedAtDesc(String email);
+    void deleteByEmail(String email);
 }
