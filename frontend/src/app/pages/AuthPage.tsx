@@ -19,7 +19,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialMode = (searchParams.get('mode') as AuthMode) || 'login';
-  const initialEmailVerified = typeof window !== 'undefined' && localStorage.getItem(EMAIL_VERIFIED_KEY) === 'true';
+  const initialEmailVerified =
+    typeof window !== 'undefined' &&
+    (localStorage.getItem(EMAIL_VERIFIED_KEY) === 'true' || searchParams.get('verified') === 'email');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,7 +31,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const [isEmailVerified, setIsEmailVerified] = useState(initialEmailVerified);
-  const [isEmailSent, setIsEmailSent] = useState(false);
+  const [isEmailSent, setIsEmailSent] = useState(initialEmailVerified);
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [isPhoneCodeSent, setIsPhoneCodeSent] = useState(false);
   const [phoneCode, setPhoneCode] = useState('');
@@ -120,16 +122,35 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   };
 
   useEffect(() => {
+    const syncEmailVerificationState = () => {
+      const isVerified = localStorage.getItem(EMAIL_VERIFIED_KEY) === 'true';
+      setIsEmailVerified(isVerified);
+      if (isVerified) {
+        setIsEmailSent(true);
+      }
+    };
+
     const syncEmailVerification = (event: StorageEvent) => {
       if (event.key !== EMAIL_VERIFIED_KEY) {
         return;
       }
 
-      setIsEmailVerified(event.newValue === 'true');
+      const isVerified = event.newValue === 'true';
+      setIsEmailVerified(isVerified);
+      if (isVerified) {
+        setIsEmailSent(true);
+      }
     };
 
+    syncEmailVerificationState();
     window.addEventListener('storage', syncEmailVerification);
-    return () => window.removeEventListener('storage', syncEmailVerification);
+    window.addEventListener('focus', syncEmailVerificationState);
+    document.addEventListener('visibilitychange', syncEmailVerificationState);
+    return () => {
+      window.removeEventListener('storage', syncEmailVerification);
+      window.removeEventListener('focus', syncEmailVerificationState);
+      document.removeEventListener('visibilitychange', syncEmailVerificationState);
+    };
   }, []);
 
   const handleSendPhoneCode = async () => {
@@ -471,7 +492,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                           onChange={(e) => {
                             setEmail(e.target.value);
                             setIsEmailSent(false);
-                            sessionStorage.removeItem(EMAIL_VERIFIED_KEY);
+                            localStorage.removeItem(EMAIL_VERIFIED_KEY);
                             setIsEmailVerified(false);
                           }}
                           disabled={isLoading}

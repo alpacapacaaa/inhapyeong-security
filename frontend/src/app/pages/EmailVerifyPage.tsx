@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { CheckCircle2, Loader2, MailWarning } from 'lucide-react';
+import { Button } from '../components/ui/button';
 import { EMAIL_VERIFIED_KEY, userService } from '../api/api';
 
 type VerifyStatus = 'loading' | 'success' | 'error';
 
 export function EmailVerifyPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<VerifyStatus>('loading');
   const [message, setMessage] = useState('이메일 인증을 확인하고 있습니다.');
 
@@ -24,7 +26,10 @@ export function EmailVerifyPage() {
         await userService.verifyEmailToken(token);
         localStorage.setItem(EMAIL_VERIFIED_KEY, 'true');
         setStatus('success');
-        setMessage('이메일 인증이 완료되었습니다. 기존 회원가입 창으로 돌아가 계속 진행해주세요.');
+        setMessage('이메일 인증이 완료되었습니다. 회원가입 페이지로 이동합니다.');
+        window.setTimeout(() => {
+          navigate('/auth?mode=signup&verified=email', { replace: true });
+        }, 1200);
       } catch (error: any) {
         setStatus('error');
         setMessage(error.message || '이메일 인증에 실패했습니다. 링크가 만료되었는지 확인해주세요.');
@@ -32,7 +37,7 @@ export function EmailVerifyPage() {
     };
 
     verifyEmail();
-  }, [searchParams]);
+  }, [navigate, searchParams]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
@@ -52,7 +57,13 @@ export function EmailVerifyPage() {
         <p className="mb-6 text-sm font-medium leading-6 text-slate-500">{message}</p>
 
         {status === 'success' && (
-          <p className="text-xs font-medium text-slate-400">이 창은 닫아도 됩니다.</p>
+          <Button
+            type="button"
+            onClick={() => navigate('/auth?mode=signup&verified=email', { replace: true })}
+            className="w-full rounded-2xl bg-indigo-600 text-white hover:bg-indigo-700"
+          >
+            회원가입으로 이동
+          </Button>
         )}
       </div>
     </div>
