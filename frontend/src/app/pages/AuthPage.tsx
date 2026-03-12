@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -19,7 +19,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialMode = (searchParams.get('mode') as AuthMode) || 'login';
-  const initialEmailVerified = typeof window !== 'undefined' && sessionStorage.getItem(EMAIL_VERIFIED_KEY) === 'true';
+  const initialEmailVerified = typeof window !== 'undefined' && localStorage.getItem(EMAIL_VERIFIED_KEY) === 'true';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -50,7 +50,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     setDepartment('');
     setPhone('');
     setIsLoading(false);
-    sessionStorage.removeItem(EMAIL_VERIFIED_KEY);
+    localStorage.removeItem(EMAIL_VERIFIED_KEY);
     setIsEmailVerified(false);
     setIsEmailSent(false);
     setIsPhoneVerified(false);
@@ -88,6 +88,8 @@ export function AuthPage({ onLogin }: AuthPageProps) {
       return;
     }
 
+    localStorage.removeItem(EMAIL_VERIFIED_KEY);
+    setIsEmailVerified(false);
     setIsLoading(true);
     try {
       await userService.sendVerificationEmail(email);
@@ -106,10 +108,29 @@ export function AuthPage({ onLogin }: AuthPageProps) {
       return;
     }
 
-    sessionStorage.setItem(EMAIL_VERIFIED_KEY, 'true');
+    const isVerified = localStorage.getItem(EMAIL_VERIFIED_KEY) === 'true';
+
+    if (!isVerified) {
+      toast.error('아직 이메일 인증이 완료되지 않았습니다. 메일의 인증 링크를 먼저 눌러주세요.');
+      return;
+    }
+
     setIsEmailVerified(true);
-    toast.success('이메일 인증을 완료했다면 휴대폰 인증을 진행해주세요.');
+    toast.success('이메일 인증이 완료되었습니다. 휴대폰 인증을 진행해주세요.');
   };
+
+  useEffect(() => {
+    const syncEmailVerification = (event: StorageEvent) => {
+      if (event.key !== EMAIL_VERIFIED_KEY) {
+        return;
+      }
+
+      setIsEmailVerified(event.newValue === 'true');
+    };
+
+    window.addEventListener('storage', syncEmailVerification);
+    return () => window.removeEventListener('storage', syncEmailVerification);
+  }, []);
 
   const handleSendPhoneCode = async () => {
     if (!requirePhoneNumber()) {
