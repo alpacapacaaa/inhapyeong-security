@@ -36,6 +36,8 @@ public class MemberService {
             throw new CustomException(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다.");
         }
 
+        emailVerificationRepository.deleteByEmail(email);
+
         String token = UUID.randomUUID().toString();
 
         EmailVerification verification = EmailVerification.builder()
@@ -59,7 +61,7 @@ public class MemberService {
         }
 
         EmailVerification verification = emailVerificationRepository
-                .findByEmailAndIsUsedTrue(request.getEmail())
+                .findTopByEmailAndIsUsedTrueOrderByCreatedAtDesc(request.getEmail())
                 .orElseThrow(() -> new CustomException(HttpStatus.FORBIDDEN, "이메일 인증이 필요합니다"));
 
         Member member = Member.builder()
