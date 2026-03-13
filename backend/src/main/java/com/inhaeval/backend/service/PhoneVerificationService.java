@@ -4,6 +4,7 @@ import com.inhaeval.backend.domain.PhoneVerification;
 import com.inhaeval.backend.exception.CustomException;
 import com.inhaeval.backend.repository.PhoneVerificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,9 +19,12 @@ public class PhoneVerificationService {
     private final PhoneVerificationRepository phoneVerificationRepository;
     private final SmsService smsService;
 
+    @Value("${app.sms.test-mode:false}")
+    private boolean testMode;
+
     @Transactional
     public void sendCode(String phoneNumber) {
-        String code = generateCode();       // 6자리 랜덤 인증번호 생성
+        String code = testMode ? "123456" : generateCode();   // 6자리 랜덤 인증번호 생성
 
         phoneVerificationRepository.deleteByPhoneNumber(phoneNumber);
 
@@ -32,7 +36,9 @@ public class PhoneVerificationService {
                 .build();
 
         phoneVerificationRepository.save(verification);     // DB 저장
-        smsService.sendSms(phoneNumber, code);              // 문자 발송
+        if (!testMode) {
+            smsService.sendSms(phoneNumber, code);
+        }          // 문자 발송
     }
 
     @Transactional

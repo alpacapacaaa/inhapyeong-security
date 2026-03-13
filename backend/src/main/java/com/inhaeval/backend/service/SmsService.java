@@ -32,6 +32,8 @@ public class SmsService {
         try {
             messageService.sendOne(new net.nurigo.sdk.message.request.SingleMessageSendingRequest(message));
         } catch (Exception e) {
+            System.out.println("SMS 발송 실패 원인: " + e.getMessage());
+            e.printStackTrace();
             throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "문자 발송에 실패했습니다.");
         }
     }
