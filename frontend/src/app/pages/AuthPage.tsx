@@ -22,6 +22,38 @@ interface SignupDraft {
   phone: string;
 }
 
+const normalizePhoneNumber = (value: string) => value.replace(/[^0-9]/g, '').slice(0, 11);
+
+const formatPhoneNumber = (value: string) => {
+  const digits = normalizePhoneNumber(value);
+
+  if (digits.length <= 3) {
+    return digits;
+  }
+
+  if (digits.length <= 7) {
+    return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  }
+
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+};
+
+const getPasswordValidationMessage = (value: string) => {
+  if (!value) {
+    return '비밀번호는 8자 이상, 영문과 숫자를 모두 포함해야 합니다.';
+  }
+
+  if (value.length < 8) {
+    return '비밀번호는 8자 이상이어야 합니다.';
+  }
+
+  if (!/[A-Za-z]/.test(value) || !/[0-9]/.test(value)) {
+    return '영문과 숫자를 모두 포함해주세요.';
+  }
+
+  return '';
+};
+
 export function AuthPage({ onLogin }: AuthPageProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -72,10 +104,13 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [signupStep, setSignupStep] = useState(1);
+  const [signupPasswordTouched, setSignupPasswordTouched] = useState(false);
 
   const isLogin = initialMode === 'login';
   const isSignup = initialMode === 'signup';
   const isFindPwd = initialMode === 'find-password';
+  const signupPasswordValidationMessage = getPasswordValidationMessage(password);
+  const showSignupPasswordError = signupStep === 2 && signupPasswordTouched && !!signupPasswordValidationMessage;
 
   const resetStates = () => {
     setEmail('');
@@ -96,6 +131,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     setNewPassword('');
     setNewPasswordConfirm('');
     setSignupStep(1);
+    setSignupPasswordTouched(false);
   };
 
   useEffect(() => {
@@ -125,6 +161,16 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   };
 
   const requireInhaEmail = () => {
+    if (!email.trim()) {
+      toast.error('이메일을 입력해주세요.');
+      return false;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error('이메일 형식이 올바르지 않습니다.');
+      return false;
+    }
+
     if (!email.endsWith('@inha.edu')) {
       toast.error('인하대 이메일(@inha.edu) 형식이 아닙니다.');
       return false;
@@ -133,8 +179,20 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   };
 
   const requirePhoneNumber = () => {
-    if (!/^01[0-9]{8,9}$/.test(phone)) {
-      toast.error('전화번호는 숫자만 입력해주세요.');
+    const normalizedPhone = normalizePhoneNumber(phone);
+
+    if (!normalizedPhone) {
+      toast.error('전화번호를 입력해주세요.');
+      return false;
+    }
+
+    if (normalizedPhone.length < 10) {
+      toast.error('전화번호를 끝까지 입력해주세요.');
+      return false;
+    }
+
+    if (!/^01[0-9]{8,9}$/.test(normalizedPhone)) {
+      toast.error('전화번호 형식이 올바르지 않습니다.');
       return false;
     }
     return true;
@@ -195,7 +253,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
 
     setIsLoading(true);
     try {
-      await userService.sendVerificationPhone(phone);
+      await userService.sendVerificationPhone(normalizePhoneNumber(phone));
       setIsPhoneCodeSent(true);
       toast.success('휴대폰 인증번호를 발송했습니다.');
     } catch (error: any) {
@@ -213,7 +271,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
 
     setIsLoading(true);
     try {
-      await userService.verifyPhoneCode(phone, phoneCode);
+      await userService.verifyPhoneCode(normalizePhoneNumber(phone), phoneCode);
       setIsPhoneVerified(true);
       toast.success('휴대폰 인증이 완료되었습니다.');
     } catch (error: any) {
@@ -224,13 +282,27 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   };
 
   const handleFindPassword = async () => {
-    if (!requireInhaEmail() || !requirePhoneNumber()) {
+    if (!email.trim()) {
+      toast.error('이메일을 입력해주세요.');
+      return;
+    }
+
+    if (!requireInhaEmail()) {
+      return;
+    }
+
+    if (!phone.trim()) {
+      toast.error('전화번호를 입력해주세요.');
+      return;
+    }
+
+    if (!requirePhoneNumber()) {
       return;
     }
 
     setIsLoading(true);
     try {
-      await userService.findPassword(email, phone);
+      await userService.findPassword(email, normalizePhoneNumber(phone));
       setFindPwdStep(2);
       toast.success('회원 정보 확인이 완료되었습니다. 발송된 인증번호를 입력해주세요.');
     } catch (error: any) {
@@ -248,7 +320,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
 
     setIsLoading(true);
     try {
-      await userService.verifyPhoneCode(phone, phoneCode);
+      await userService.verifyPhoneCode(normalizePhoneNumber(phone), phoneCode);
       setFindPwdStep(3);
       toast.success('인증 성공. 새 비밀번호를 입력해주세요.');
     } catch (error: any) {
@@ -259,8 +331,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   };
 
   const handleResetPassword = async () => {
-    if (newPassword.length < 8) {
-      toast.error('비밀번호는 8자 이상이어야 합니다.');
+    const passwordValidationMessage = getPasswordValidationMessage(newPassword);
+    if (passwordValidationMessage) {
+      toast.error(passwordValidationMessage);
       return;
     }
 
@@ -271,7 +344,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
 
     setIsLoading(true);
     try {
-      await userService.resetPassword(email, newPassword, phone, newPasswordConfirm);
+      await userService.resetPassword(email, newPassword, normalizePhoneNumber(phone), newPasswordConfirm);
       toast.success('비밀번호가 변경되었습니다. 다시 로그인해주세요.');
       changeMode('login');
     } catch (error: any) {
@@ -316,12 +389,18 @@ export function AuthPage({ onLogin }: AuthPageProps) {
           return;
         }
 
+        if (signupPasswordValidationMessage) {
+          setSignupPasswordTouched(true);
+          toast.error(signupPasswordValidationMessage);
+          return;
+        }
+
         await userService.signup({
           email,
           password,
           nickname,
           department,
-          phoneNumber: phone,
+          phoneNumber: normalizePhoneNumber(phone),
         });
         localStorage.removeItem(EMAIL_VERIFIED_KEY);
         localStorage.removeItem(EMAIL_PENDING_KEY);
@@ -393,14 +472,14 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                     </div>
                     <div className="space-y-1.5 font-bold">
                       <Label htmlFor="find-phone" className="text-sm text-slate-700 ml-1">전화번호</Label>
-                      <Input
-                        id="find-phone"
-                        type="tel"
-                        placeholder="01012345678"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                        className="bg-gray-50 border-gray-200 rounded-xl h-12 px-4 focus:ring-2 focus:ring-indigo-500"
-                      />
+                        <Input
+                          id="find-phone"
+                          type="tel"
+                          placeholder="010-1234-5678"
+                          value={phone}
+                          onChange={(e) => setPhone(formatPhoneNumber(e.target.value))}
+                          className="bg-gray-50 border-gray-200 rounded-xl h-12 px-4 focus:ring-2 focus:ring-indigo-500"
+                        />
                     </div>
                     <Button
                       type="button"
@@ -568,10 +647,10 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                         <Input
                           id="signup-phone"
                           type="tel"
-                          placeholder="01012345678"
+                          placeholder="010-1234-5678"
                           value={phone}
                           onChange={(e) => {
-                            setPhone(e.target.value.replace(/[^0-9]/g, ''));
+                            setPhone(formatPhoneNumber(e.target.value));
                             setIsPhoneCodeSent(false);
                             setIsPhoneVerified(false);
                             setPhoneCode('');
@@ -628,11 +707,19 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                         <Input
                           id="password-signup"
                           type="password"
-                          placeholder="8자 이상"
+                          placeholder="영문+숫자 포함 8자 이상"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          className="bg-white/50 border-slate-200 rounded-xl h-12 px-4 focus:ring-2 focus:ring-indigo-500"
+                          onBlur={() => setSignupPasswordTouched(true)}
+                          className={`bg-white/50 rounded-xl h-12 px-4 focus:ring-2 ${
+                            showSignupPasswordError
+                              ? 'border-red-400 focus:ring-red-200'
+                              : 'border-slate-200 focus:ring-indigo-500'
+                          }`}
                         />
+                        <p className={`text-xs ml-1 ${showSignupPasswordError ? 'text-red-500 font-semibold' : 'text-slate-400'}`}>
+                          {showSignupPasswordError ? signupPasswordValidationMessage : '영문과 숫자를 포함한 8자 이상으로 입력해주세요.'}
+                        </p>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="nickname" className="text-sm font-bold text-slate-700 ml-1">닉네임</Label>
