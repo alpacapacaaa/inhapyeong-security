@@ -8,4 +8,6 @@ public interface PhoneVerificationRepository extends JpaRepository<PhoneVerifica
     Optional<PhoneVerification> findByPhoneNumberAndCode(String phoneNumber, String code);
     Optional<PhoneVerification> findTopByPhoneNumberAndIsUsedTrueOrderByIdDesc(String phoneNumber);
     void deleteByPhoneNumber(String phoneNumber);
+    Optional<PhoneVerification> findTopByPhoneNumberAndIsUsedTrueOrderByCreatedAtDesc(String phoneNumber);
+    Optional<PhoneVerification> findTopByPhoneNumberOrderByCreatedAtDesc(String phoneNumber);
 }
