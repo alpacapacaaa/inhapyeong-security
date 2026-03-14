@@ -2,26 +2,26 @@
 
 :root {
   --font-size: 16px;
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
+  --background: #f4fbff;
+  --foreground: #0f2340;
   --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: #0f2340;
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
+  --popover-foreground: #0f2340;
+  --primary: #005bac;
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
+  --secondary: #e8f3fb;
+  --secondary-foreground: #0f2340;
+  --muted: #e6f1f9;
+  --muted-foreground: #63758d;
+  --accent: #dbf8ff;
+  --accent-foreground: #0f2340;
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
+  --border: rgba(0, 91, 172, 0.14);
   --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
+  --input-background: #f7fbfe;
+  --switch-background: #b3c8df;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --ring: oklch(0.708 0 0);
@@ -126,6 +126,10 @@
 
   body {
     @apply bg-background text-foreground;
+    background-image:
+      linear-gradient(to right, rgba(0, 91, 172, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 91, 172, 0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
   }
 
   /**

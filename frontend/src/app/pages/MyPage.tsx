@@ -200,6 +200,25 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
     finally { setIsSaving(false); }
   };
 
+  const handleDeleteReview = async (reviewId: string) => {
+    const shouldDelete = window.confirm('이 강의평을 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.');
+    if (!shouldDelete) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await reviewService.deleteReview(reviewId);
+      const updatedReviews = await reviewService.getReviewsByUserId('current-user');
+      setUserReviews(updatedReviews);
+      toast.success('강의평이 삭제되었습니다.');
+    } catch (e: any) {
+      toast.error(e.message || '강의평 삭제에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -539,24 +558,36 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
               </h2>
               <div className="space-y-1">
                 {userReviews.map((review) => (
-                  <Link key={review.id} to={`/course/${review.courseId}`}>
-                    <div className="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-xl transition-colors">
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-gray-800">
-                          {review.courseName} · <span className="text-gray-500 font-medium">{review.professorName}</span>
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">{review.semester}</p>
+                  <div key={review.id} className="flex items-center justify-between gap-3 py-3 px-2 hover:bg-gray-50 rounded-xl transition-colors">
+                    <Link to={`/course/${review.courseId}`} className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">
+                            {review.courseName} · <span className="text-gray-500 font-medium">{review.professorName}</span>
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">{review.semester}</p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-3.5 h-3.5 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}`}
+                            />
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: 5 }, (_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-3.5 h-3.5 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </Link>
+                    </Link>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={isSaving}
+                      onClick={() => handleDeleteReview(review.id)}
+                      className="shrink-0 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 px-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 ))}
                 {userReviews.length === 0 && (
                   <p className="text-gray-400 text-sm text-center py-8">아직 작성한 강의평이 없습니다.</p>
