@@ -24,13 +24,18 @@ public class PhoneVerificationService {
     @Value("${app.sms.test-mode:false}")
     private boolean testMode;
 
+    // 회원가입용 - 중복 체크 포함
     @Transactional
-    public void sendCode(String phoneNumber) {
-        String code = testMode ? "123456" : generateCode();   // 6자리 랜덤 인증번호 생성
-
+    public void sendCodeForSignup(String phoneNumber) {
         if (memberRepository.existsByPhoneNumber(phoneNumber)) {
             throw new CustomException(HttpStatus.CONFLICT, "이미 사용 중인 전화번호입니다.");
         }
+        sendCode(phoneNumber);
+    }
+
+    @Transactional
+    public void sendCode(String phoneNumber) {
+        String code = testMode ? "123456" : generateCode();   // 6자리 랜덤 인증번호 생성
 
         phoneVerificationRepository.findTopByPhoneNumberOrderByCreatedAtDesc(phoneNumber)
                 .ifPresent(v -> {

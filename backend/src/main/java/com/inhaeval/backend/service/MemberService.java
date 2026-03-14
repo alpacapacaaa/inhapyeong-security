@@ -157,5 +157,6 @@ public class MemberService {
         }
 
         member.updatePassword(passwordEncoder.encode(request.getNewPassword()));
+        phoneVerificationRepository.deleteByPhoneNumber(request.getPhoneNumber());
     }
 }

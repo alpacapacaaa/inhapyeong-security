@@ -48,7 +48,7 @@ public class AuthController {
     // SMS 인증 발송
     @PostMapping("/phone/send")
     public ResponseEntity<Void> sendSms(@RequestBody @Valid PhoneSendRequest request) {
-        phoneVerificationService.sendCode(request.getPhoneNumber());
+        phoneVerificationService.sendCodeForSignup(request.getPhoneNumber());
         return ResponseEntity.ok().build();
     }
 
