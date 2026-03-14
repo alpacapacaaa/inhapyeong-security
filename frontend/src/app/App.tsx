@@ -9,6 +9,7 @@ import { ReviewWritePage } from './pages/ReviewWritePage';
 import { MyPage } from './pages/MyPage';
 import { AuthPage } from './pages/AuthPage';
 import { EmailVerifyPage } from './pages/EmailVerifyPage';
+import { LogoPreviewPage } from './pages/LogoPreviewPage';
 import { toast } from 'sonner';
 import { userService } from './api/api';
 import { Loader2 } from 'lucide-react';
@@ -70,6 +71,7 @@ export default function App() {
           <Route path="/mypage" element={isLoggedIn ? <MyPage onAccountDeleted={handleAccountDeleted} /> : <Navigate to="/auth?mode=login" />} />
           <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
           <Route path="/auth/email/verify" element={<EmailVerifyPage />} />
+          <Route path="/logo-preview" element={<LogoPreviewPage />} />
         </Routes>
         <Toaster />
       </div>

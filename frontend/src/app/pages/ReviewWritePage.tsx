@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { Star, Loader2, Sparkles, AlertCircle, Activity, X, Plus } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
@@ -11,9 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../components/ui/accordion';
 import { courseService, reviewService, userService } from '../api/api';
 import { Course } from '../types/types';
+import { semesters as semesterOptions } from '../data/mockData';
 import { toast } from 'sonner';
 
-const semesters = ['2025-2학기', '2025-1학기', '2024-2학기', '2024-1학기'];
 const examTypeOptions = ['객관식', '단답형', '주관식/서술형', '오픈북', '과제 대체', '실습/발표', '조별 발표', '코드 짜기'];
 const recommendOptions = ['벼락치기 가능', '성실한 출석러', '팀플/발표 선호'];
 const notRecommendOptions = ['암기 취약', '팀플 극혐', '발표 공포증'];
@@ -21,12 +21,14 @@ const notRecommendOptions = ['암기 취약', '팀플 극혐', '발표 공포증
 export function ReviewWritePage() {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const availableSemesters = semesterOptions.filter((semester) => semester !== '전체');
 
   // 기본 항목
-  const [semester, setSemester] = useState('2025-1학기');
+  const [semester, setSemester] = useState(searchParams.get('semester') ?? availableSemesters[0] ?? '2025-2학기');
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
@@ -208,6 +210,9 @@ export function ReviewWritePage() {
             <p className="text-gray-500 mt-1">
               {course.professor} 교수님 · {course.department}
             </p>
+            <p className="text-sm text-indigo-600 mt-3 font-semibold">
+              강의는 과목과 교수님 기준으로 모아두고, 리뷰에는 실제 수강한 학기를 함께 남깁니다.
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-10">
@@ -215,13 +220,13 @@ export function ReviewWritePage() {
             <div className="space-y-8">
               <div className="flex flex-col md:flex-row md:items-center gap-6">
                 <div className="space-y-3 flex-1">
-                  <Label className="text-base font-semibold">수강 학기</Label>
+                  <Label className="text-base font-semibold">실제로 수강한 학기</Label>
                   <Select value={semester} onValueChange={setSemester}>
                     <SelectTrigger className="w-full md:w-[200px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {semesters.map((sem) => (
+                      {availableSemesters.map((sem) => (
                         <SelectItem key={sem} value={sem}>{sem}</SelectItem>
                       ))}
                     </SelectContent>

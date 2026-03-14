@@ -5,6 +5,7 @@ import { mockCourses, mockReviews, mockUser, mockPointHistory, mockNotices, mock
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8080';
+const USE_MOCK_AUTH = (import.meta.env.VITE_USE_MOCK_AUTH as string | undefined) === 'true';
 const AUTH_TOKEN_KEY = 'auth_token';
 const AUTH_USER_KEY = 'auth_user';
 export const EMAIL_VERIFIED_KEY = 'email_verified';
@@ -30,6 +31,26 @@ interface PasswordResetPayload {
   newPassword: string;
   newPasswordConfirm: string;
 }
+
+interface MockAuthAccount {
+  email: string;
+  password: string;
+  nickname: string;
+  department: string;
+  points: number;
+  hasPass?: boolean;
+}
+
+const MOCK_AUTH_ACCOUNTS: MockAuthAccount[] = [
+  {
+    email: 'heuka@inha.edu',
+    password: 'inha1234',
+    nickname: '강의평테스터',
+    department: '컴퓨터공학과',
+    points: 120,
+    hasPass: true,
+  },
+];
 
 const parseErrorMessage = (data: unknown): string => {
   if (!data || typeof data !== 'object') {
@@ -114,6 +135,17 @@ const buildSessionUser = (
   points: auth.points,
   hasPass: overrides.hasPass ?? false,
   passExpiryDate: overrides.passExpiryDate,
+});
+
+const buildMockSessionUser = (account: MockAuthAccount): User => ({
+  ...mockUser,
+  id: account.email,
+  email: account.email,
+  nickname: account.nickname,
+  department: account.department,
+  points: account.points,
+  hasPass: account.hasPass ?? true,
+  passExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
 });
 
 // In-memory storage for the session (so updates work locally)
@@ -212,6 +244,34 @@ export const reviewService = {
 
     return newReview;
   },
+
+  deleteReview: async (reviewId: string): Promise<void> => {
+    await delay(300);
+
+    const reviewToDelete = reviews.find((review) => review.id === reviewId);
+    if (!reviewToDelete) {
+      throw new Error('삭제할 강의평을 찾을 수 없습니다.');
+    }
+
+    reviews = reviews.filter((review) => review.id !== reviewId);
+
+    const courseReviews = reviews.filter((review) => review.courseId === reviewToDelete.courseId);
+    const updatedReviewCount = courseReviews.length;
+    const updatedRating =
+      updatedReviewCount > 0
+        ? courseReviews.reduce((sum, review) => sum + review.rating, 0) / updatedReviewCount
+        : 0;
+
+    courses = courses.map((course) =>
+      course.id === reviewToDelete.courseId
+        ? {
+            ...course,
+            reviewCount: updatedReviewCount,
+            rating: updatedReviewCount > 0 ? updatedRating : course.rating,
+          }
+        : course,
+    );
+  },
 };
 
 export const userService = {
@@ -229,6 +289,21 @@ export const userService = {
   },
 
   login: async (email: string, password?: string): Promise<User> => {
+    if (USE_MOCK_AUTH) {
+      await delay(200);
+      const account = MOCK_AUTH_ACCOUNTS.find(
+        (candidate) => candidate.email === email && candidate.password === password,
+      );
+
+      if (!account) {
+        throw new Error('목 로그인 계정이 아니거나 비밀번호가 올바르지 않습니다.');
+      }
+
+      currentUser = buildMockSessionUser(account);
+      saveAuthSession(`mock-token-${account.email}`, currentUser);
+      return currentUser;
+    }
+
     const auth = await apiRequest<AuthResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),

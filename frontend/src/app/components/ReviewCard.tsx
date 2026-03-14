@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Star, ThumbsUp, Sparkles, AlertCircle, BookOpen, PenTool, ChevronDown, ChevronUp, Award } from 'lucide-react';
+import { Star, ThumbsUp, AlertCircle, BookOpen, PenTool, ChevronDown, ChevronUp, Award } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Review } from '../types/types';
@@ -34,6 +34,8 @@ const gradingLabel = {
 
 export function ReviewCard({ review }: ReviewCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [likes, setLikes] = useState(review.likes);
+  const [liked, setLiked] = useState(false);
   const stars = Array.from({ length: 5 }, (_, i) => i < review.rating);
 
   // Check if review has any extended fields
@@ -49,6 +51,15 @@ export function ReviewCard({ review }: ReviewCardProps) {
   // 알고리즘: 글자 수가 100자 이상이거나, 상세 선택항목(hasExtendedInfo)이 작성되었을 경우 우수 강의평으로 선정
   const isHighQuality = review.content.length > 100 || hasExtendedInfo;
 
+  const handleLikeClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setLiked((previous) => {
+      const nextLiked = !previous;
+      setLikes((currentLikes) => currentLikes + (nextLiked ? 1 : -1));
+      return nextLiked;
+    });
+  };
+
   return (
     <Card
       className={`transition-all duration-300 border-gray-100 shadow-sm ${hasExtendedInfo ? 'cursor-pointer hover:border-indigo-200 hover:shadow-md' : ''}`}
@@ -63,10 +74,10 @@ export function ReviewCard({ review }: ReviewCardProps) {
                 <span className="text-gray-300 text-xs">|</span>
                 <span className="text-sm text-gray-500">{review.semester}</span>
               </div>
-              {review.oneLineTip && (
-                <div className="flex items-center gap-1.5 mt-1 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full w-max border border-blue-100">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span className="text-xs font-semibold">{review.oneLineTip}</span>
+              {isHighQuality && (
+                <div className="flex items-center gap-1.5 mt-1 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 text-amber-600 px-3 py-1.5 rounded-full w-max shadow-sm select-none">
+                  <Award className="w-3.5 h-3.5" />
+                  <span className="text-xs font-black">정성이 들어간 강의평</span>
                 </div>
               )}
             </div>
@@ -175,17 +186,18 @@ export function ReviewCard({ review }: ReviewCardProps) {
 
           <div className="flex items-center justify-between pt-2">
             <div className="flex flex-wrap items-center gap-2">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-600 transition-colors">
+              <button
+                type="button"
+                onClick={handleLikeClick}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+                  liked
+                    ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                    : 'bg-gray-50 hover:bg-gray-100 text-gray-600'
+                }`}
+              >
                 <ThumbsUp className="w-4 h-4" />
-                <span className="text-sm font-medium">추천 {review.likes}</span>
+                <span className="text-sm font-medium">추천 {likes}</span>
               </button>
-
-              {isHighQuality && (
-                <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 text-amber-600 px-2.5 py-1.5 rounded-lg text-xs font-black shadow-sm select-none">
-                  <Award className="w-3.5 h-3.5" />
-                  정성이 들어간 강의평
-                </div>
-              )}
             </div>
 
             {hasExtendedInfo && (
