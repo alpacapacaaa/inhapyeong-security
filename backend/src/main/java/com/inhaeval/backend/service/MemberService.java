@@ -2,6 +2,7 @@ package com.inhaeval.backend.service;
 
 import com.inhaeval.backend.domain.EmailVerification;
 import com.inhaeval.backend.domain.Member;
+import com.inhaeval.backend.domain.PhoneVerification;
 import com.inhaeval.backend.dto.*;
 import com.inhaeval.backend.exception.CustomException;
 import com.inhaeval.backend.repository.EmailVerificationRepository;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +37,14 @@ public class MemberService {
         if (memberRepository.existsByEmail(email)) {
             throw new CustomException(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다.");
         }
+
+        // 1분 이내 재요청 방지
+        emailVerificationRepository.findTopByEmailOrderByCreatedAtDesc(email)
+                .ifPresent(v -> {
+                    if (v.getCreatedAt().isAfter(LocalDateTime.now().minusMinutes(1))) {
+                        throw new CustomException(HttpStatus.TOO_MANY_REQUESTS, "1분 후 다시 시도해주세요.");
+                    }
+                });
 
         emailVerificationRepository.deleteByEmail(email);
 
@@ -63,6 +73,10 @@ public class MemberService {
         EmailVerification verification = emailVerificationRepository
                 .findTopByEmailAndIsUsedTrueOrderByCreatedAtDesc(request.getEmail())
                 .orElseThrow(() -> new CustomException(HttpStatus.FORBIDDEN, "이메일 인증이 필요합니다"));
+
+        phoneVerificationRepository
+                .findTopByPhoneNumberAndIsUsedTrueOrderByCreatedAtDesc(request.getPhoneNumber())
+                .orElseThrow(() -> new CustomException(HttpStatus.BAD_REQUEST, "전화번호 인증이 필요합니다."));
 
         Member member = Member.builder()
                 .email(request.getEmail())
@@ -127,11 +141,20 @@ public class MemberService {
             throw new CustomException(HttpStatus.BAD_REQUEST, "비밀번호가 일치하지 않습니다.");
         }
 
-        phoneVerificationRepository.findTopByPhoneNumberAndIsUsedTrueOrderByIdDesc(request.getPhoneNumber())
+        PhoneVerification verification = phoneVerificationRepository.findTopByPhoneNumberAndIsUsedTrueOrderByIdDesc(request.getPhoneNumber())
                 .orElseThrow(() -> new CustomException(HttpStatus.FORBIDDEN, "휴대폰 인증이 필요합니다."));
+
+        // 인증 후 5분 이내에만 변경 가능
+        if (verification.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "인증이 만료되었습니다. 다시 인증해주세요.");
+        }
 
         Member member = memberRepository.findByPhoneNumber(request.getPhoneNumber())
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다."));
+
+        if (passwordEncoder.matches(request.getNewPassword(), member.getPassword())) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "이전 비밀번호와 동일합니다.");
+        }
 
         member.updatePassword(passwordEncoder.encode(request.getNewPassword()));
     }

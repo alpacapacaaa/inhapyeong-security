@@ -22,6 +22,11 @@ public class PhoneVerification {
     private String code;
     private boolean isUsed;
     private LocalDateTime expiresAt;
+    private LocalDateTime createdAt;
+    private int failCount;
+    public void increaseFailCount() {
+        this.failCount++;
+    }
 
     public void use() {
         this.isUsed = true;
