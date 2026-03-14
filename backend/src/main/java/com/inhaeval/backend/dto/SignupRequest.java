@@ -15,7 +15,10 @@ public class SignupRequest {
     private String email;
 
     @NotBlank(message = "비밀번호를 입력해주세요")
-    @Size(min = 8, message = "비밀번호는 8자 이상이어야 합니다")
+    @Pattern(
+            regexp = "^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9!@#$%^&*]{8,}$",
+            message = "비밀번호는 8자 이상, 영문과 숫자를 포함해야 합니다"
+    )
     private String password;
 
     @NotBlank(message = "학과를 입력해주세요")
