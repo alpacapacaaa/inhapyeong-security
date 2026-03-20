@@ -18,7 +18,6 @@ public class CourseResponse {
     private int reviewCount;
     private String category;
     private String type;
-    private Integer year;
 
     // 프론트엔드 UI 깨짐 방지용 기본값
     @Builder.Default private String difficulty = "medium";
@@ -38,7 +37,6 @@ public class CourseResponse {
                 .reviewCount(course.getReviewCount())
                 .category(course.getCategory())
                 .type(course.getType())
-                .year(course.getYear())
                 .build();
     }
 }

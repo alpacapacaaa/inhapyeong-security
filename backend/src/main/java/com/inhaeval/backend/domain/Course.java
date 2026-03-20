@@ -29,12 +29,10 @@ public class Course {
 
     private String type;        // 전공필수, 기초교양 등 세부구분 (null 허용)
 
-    private Integer year;       // 권장학년 (null 허용)
-
     private Integer credits;    // 과목 학점 (예: 3학점, 2학점 등)
 
     private String semester;    // 개설 학기 "26-1", "26-2"
-    
+
     // 반정규화 필드 (DB가 무거워지지 않게 평점과 개수를 미리 저장해둠)
     @Column(nullable = false)
     @Builder.Default
