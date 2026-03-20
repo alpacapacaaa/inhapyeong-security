@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
-import { Star, Loader2, Sparkles, AlertCircle, Activity, X, Plus } from 'lucide-react';
+import { Star, Loader2, AlertCircle, Activity, X, Plus } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
@@ -60,6 +60,13 @@ export function ReviewWritePage() {
   const [tempKeyword, setTempKeyword] = useState('');
 
   const [content, setContent] = useState('');
+  const [draggingMetric, setDraggingMetric] = useState<string | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ label: string; ratio: number } | null>(null);
+  const metricPointerState = useRef<{ label: string | null; startX: number; active: boolean }>({
+    label: null,
+    startX: 0,
+    active: false,
+  });
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -175,43 +182,48 @@ export function ReviewWritePage() {
   const isMajor = course?.category === '전공';
 
   const majorMetrics = [
-    { label: '시험 난이도', value: diffScore, setter: setDiffScore, options: [{ l: '쉬움', v: 1 }, { l: '보통', v: 3 }, { l: '어려움', v: 5 }] },
-    { label: '강의력', value: teachingScore, setter: setTeachingScore, options: [{ l: '아쉬움', v: 1 }, { l: '보통', v: 3 }, { l: '훌륭함', v: 5 }] },
-    { label: '학점 비율', value: gradScore, setter: setGradScore, options: [{ l: '짜게줌', v: 1 }, { l: '보통', v: 3 }, { l: '꿀잼/잘줌', v: 5 }] },
-    { label: '과제량', value: workScore, setter: setWorkScore, options: [{ l: '적음', v: 1 }, { l: '보통', v: 3 }, { l: '많음', v: 5 }] },
-    { label: '선수지식 필요도', value: prerequisiteScore, setter: setPrerequisiteScore, options: [{ l: '필요없음', v: 1 }, { l: '어느정도', v: 3 }, { l: '필수적임', v: 5 }] },
-    { label: '전공 심화도', value: depthScore, setter: setDepthScore, options: [{ l: '얕음', v: 1 }, { l: '보통', v: 3 }, { l: '깊음', v: 5 }] },
+    { label: '시험 난이도', value: diffScore, setter: setDiffScore, options: ['쉬움', '조금 쉬움', '보통', '어려움', '매우 어려움'] },
+    { label: '강의력', value: teachingScore, setter: setTeachingScore, options: ['아쉬움', '무난함', '좋음', '매우 좋음', '압도적'] },
+    { label: '학점 비율', value: gradScore, setter: setGradScore, options: ['짜게줌', '조금 짬', '보통', '잘 주는 편', '매우 후함'] },
+    { label: '과제량', value: workScore, setter: setWorkScore, options: ['거의 없음', '적은 편', '보통', '많은 편', '매우 많음'] },
+    { label: '선수지식 필요도', value: prerequisiteScore, setter: setPrerequisiteScore, options: ['거의 없음', '조금 필요', '어느 정도', '필요함', '필수적임'] },
+    { label: '전공 심화도', value: depthScore, setter: setDepthScore, options: ['가볍게', '기초 위주', '보통', '깊게', '매우 깊게'] },
   ];
 
   const generalMetrics = [
-    { label: '시험 난이도', value: diffScore, setter: setDiffScore, options: [{ l: '쉬움', v: 1 }, { l: '보통', v: 3 }, { l: '어려움', v: 5 }] },
-    { label: '시간 투자', value: timeInvestScore, setter: setTimeInvestScore, options: [{ l: '적음', v: 1 }, { l: '보통', v: 3 }, { l: '많음', v: 5 }] },
-    { label: '학점 비율', value: gradScore, setter: setGradScore, options: [{ l: '짜게줌', v: 1 }, { l: '보통', v: 3 }, { l: '꿀잼/잘줌', v: 5 }] },
-    { label: '과제량', value: workScore, setter: setWorkScore, options: [{ l: '적음', v: 1 }, { l: '보통', v: 3 }, { l: '많음', v: 5 }] },
-    { label: '출석체크 엄격도', value: attScore, setter: setAttScore, options: [{ l: '안부름/전자', v: 1 }, { l: '가끔 부름', v: 3 }, { l: '매번 부름', v: 5 }] },
-    { label: '족보 유효도', value: pastExamScore, setter: setPastExamScore, options: [{ l: '안탐', v: 1 }, { l: '조금 탐', v: 3 }, { l: '그대로 나옴', v: 5 }] },
+    { label: '시험 난이도', value: diffScore, setter: setDiffScore, options: ['쉬움', '조금 쉬움', '보통', '어려움', '매우 어려움'] },
+    { label: '시간 투자', value: timeInvestScore, setter: setTimeInvestScore, options: ['거의 없음', '적은 편', '보통', '많은 편', '매우 많음'] },
+    { label: '학점 비율', value: gradScore, setter: setGradScore, options: ['짜게줌', '조금 짬', '보통', '잘 주는 편', '매우 후함'] },
+    { label: '과제량', value: workScore, setter: setWorkScore, options: ['거의 없음', '적은 편', '보통', '많은 편', '매우 많음'] },
+    { label: '출석체크 엄격도', value: attScore, setter: setAttScore, options: ['자유로움', '가끔 확인', '보통', '자주 확인', '엄격함'] },
+    { label: '족보 유효도', value: pastExamScore, setter: setPastExamScore, options: ['거의 없음', '조금 도움', '보통', '꽤 도움', '많이 도움'] },
   ];
 
   const currentMetrics = isMajor ? majorMetrics : generalMetrics;
+  const getMetricOption = (value: number, options: string[]) => options[Math.max(0, Math.min(options.length - 1, Math.round(value) - 1))];
+  const resolveMetricRatioFromPointer = (event: React.PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+  };
+  const resolveMetricValueFromRatio = (ratio: number) => Math.min(5, Math.max(1, Math.round(ratio * 4) + 1));
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-indigo-600 pb-24 pt-10 px-4">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-3xl font-bold text-white mb-2">프리미엄 강의평 작성하기</h1>
-          <p className="text-indigo-100 opacity-90">후배들에게 도움이 될 생생한 후기를 남겨주세요!</p>
-        </div>
-      </div>
+    <div className="min-h-screen py-8 pb-20">
+      <div className="page-shell max-w-[920px]">
+        <div className="page-panel rounded-[2rem] p-6 md:p-8">
+          <div className="mb-8 rounded-[1.75rem] border border-[rgba(15,23,42,0.08)] bg-[#f8fbff] p-5 md:p-6">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#005bac]">강의평</p>
+            <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950">강의평 남기기</h1>
+            <p className="mt-2 text-sm font-medium text-slate-500">실제로 수강한 내용을 기준으로 다음 학기 수강생에게 도움이 될 정보를 남겨주세요.</p>
+          </div>
 
-      <div className="max-w-3xl mx-auto px-4 -mt-16">
-        <div className="bg-white rounded-2xl p-6 md:p-8 shadow-xl shadow-indigo-100">
           <div className="mb-8 border-b border-gray-100 pb-6">
             <h2 className="text-xl font-bold text-gray-900">{course.name}</h2>
             <p className="text-gray-500 mt-1">
               {course.professor} 교수님 · {course.department}
             </p>
-            <p className="text-sm text-indigo-600 mt-3 font-semibold">
-              강의는 과목과 교수님 기준으로 모아두고, 리뷰에는 실제 수강한 학기를 함께 남깁니다.
+            <p className="mt-3 text-sm font-medium text-slate-500">
+              수강한 학기 기준으로 남겨두면 강의 흐름을 더 정확하게 확인할 수 있습니다.
             </p>
           </div>
 
@@ -270,32 +282,129 @@ export function ReviewWritePage() {
               {/* 🌟 육각형 지표 평가 (1~5점) */}
               <div className="pt-4 space-y-4">
                 <Label className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-indigo-500" />
-                  상세 지표 평가 (육각형 스탯)
+                  <Activity className="w-5 h-5 text-[#005bac]" />
+                  상세 지표
                 </Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 bg-slate-50 p-6 rounded-2xl border border-slate-100/80 shadow-inner">
-                  {currentMetrics.map((metric, idx) => (
-                    <div key={idx} className="space-y-2">
-                      <div className="flex justify-between items-center mb-1">
-                        <Label className="text-sm font-bold text-gray-700">{metric.label}</Label>
-                      </div>
-                      <div className="flex gap-1.5">
-                        {metric.options.map((opt) => (
-                          <button
-                            key={opt.v}
-                            type="button"
-                            onClick={() => metric.setter(opt.v)}
-                            className={`flex-1 py-1.5 px-1 text-[13px] font-bold rounded-lg transition-all ${metric.value === opt.v
-                              ? 'bg-indigo-600 text-white shadow-md border-transparent scale-105'
-                              : 'bg-white text-gray-400 hover:bg-gray-100 hover:text-gray-600 border border-gray-200/80 shadow-sm'
-                              }`}
-                          >
-                            {opt.l}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                <div className="rounded-[1.75rem] border border-[rgba(15,23,42,0.08)] bg-[linear-gradient(180deg,#fbfdff_0%,#f4f8fb_100%)] p-4 md:p-5">
+                  <div className="mb-5 flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-slate-500">클릭하거나 드래그한 뒤 놓으면 가장 가까운 단계로 맞춰집니다.</p>
+                    <span className="rounded-full border border-[rgba(15,23,42,0.08)] bg-white px-3 py-1 text-xs font-black text-slate-500 shadow-sm">5단계 선택</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {currentMetrics.map((metric) => {
+                      const selectedLabel = getMetricOption(metric.value, metric.options);
+                      const currentRatio =
+                        dragPreview?.label === metric.label ? dragPreview.ratio : (metric.value - 1) / 4;
+                      const isDraggingCurrentMetric = draggingMetric === metric.label;
+
+                      return (
+                        <div key={metric.label} className="rounded-[1.2rem] border border-[rgba(15,23,42,0.08)] bg-white p-3.5 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <Label className="text-sm font-black text-slate-900">{metric.label}</Label>
+                              <p className="mt-1 text-[11px] font-medium text-slate-500">{metric.options[0]} - {metric.options[4]}</p>
+                            </div>
+                            <span className="rounded-full bg-[#edf4ff] px-2.5 py-1 text-xs font-black text-[#005bac]">
+                              {selectedLabel}
+                            </span>
+                          </div>
+
+                          <div className="mt-4 rounded-[1rem] border border-[rgba(15,23,42,0.06)] bg-white/80 px-3 py-3">
+                            <div className="mb-2 flex items-center justify-between text-[10px] font-black text-slate-400">
+                              <span>{metric.options[0]}</span>
+                              <span>{metric.options[4]}</span>
+                            </div>
+
+                            <div
+                              className="relative flex items-center gap-1 rounded-full bg-slate-100/90 p-1 touch-none select-none"
+                              onPointerDown={(event) => {
+                                metricPointerState.current = {
+                                  label: metric.label,
+                                  startX: event.clientX,
+                                  active: true,
+                                };
+                              }}
+                              onPointerMove={(event) => {
+                                if (!metricPointerState.current.active || metricPointerState.current.label !== metric.label) {
+                                  return;
+                                }
+
+                                const movedEnough = Math.abs(event.clientX - metricPointerState.current.startX) > 6;
+                                if (movedEnough) {
+                                  if (draggingMetric !== metric.label) {
+                                    setDraggingMetric(metric.label);
+                                  }
+                                  setDragPreview({
+                                    label: metric.label,
+                                    ratio: resolveMetricRatioFromPointer(event),
+                                  });
+                                }
+                              }}
+                              onPointerUp={() => {
+                                if (draggingMetric === metric.label) {
+                                  const finalRatio = dragPreview?.label === metric.label ? dragPreview.ratio : (metric.value - 1) / 4;
+                                  metric.setter(resolveMetricValueFromRatio(finalRatio));
+                                }
+                                metricPointerState.current = { label: null, startX: 0, active: false };
+                                setDraggingMetric(null);
+                                setDragPreview(null);
+                              }}
+                              onPointerCancel={() => {
+                                metricPointerState.current = { label: null, startX: 0, active: false };
+                                setDraggingMetric(null);
+                                setDragPreview(null);
+                              }}
+                              onLostPointerCapture={() => {
+                                if (draggingMetric === metric.label) {
+                                  const finalRatio = dragPreview?.label === metric.label ? dragPreview.ratio : (metric.value - 1) / 4;
+                                  metric.setter(resolveMetricValueFromRatio(finalRatio));
+                                }
+                                metricPointerState.current = { label: null, startX: 0, active: false };
+                                setDraggingMetric(null);
+                                setDragPreview(null);
+                              }}
+                            >
+                              <div
+                                className={`pointer-events-none absolute bottom-1 top-1 rounded-full bg-[#005bac] shadow-[0_12px_24px_rgba(0,91,172,0.16)] ${
+                                  isDraggingCurrentMetric ? 'transition-none' : 'transition-[left] duration-100 ease-out'
+                                }`}
+                                style={{
+                                  width: 'calc((100% - 8px) / 5)',
+                                  left: `calc(4px + ((100% - 8px - ((100% - 8px) / 5)) * ${currentRatio}))`,
+                                }}
+                              />
+                              {metric.options.map((option, index) => {
+                                const value = index + 1;
+                                const isSelected = resolveMetricValueFromRatio(currentRatio) === value;
+
+                                return (
+                                  <button
+                                    key={value}
+                                    type="button"
+                                    onClick={() => {
+                                      metric.setter(value);
+                                      metricPointerState.current = { label: null, startX: 0, active: false };
+                                      setDragPreview(null);
+                                      setDraggingMetric(null);
+                                    }}
+                                    className={`relative z-10 min-w-0 flex-1 rounded-full px-0 py-2.5 text-center transition-all ${
+                                      isSelected ? 'text-white' : 'text-slate-400 hover:text-slate-700'
+                                    }`}
+                                    aria-label={`${metric.label} ${option}`}
+                                  >
+                                    <span className="block text-sm font-black">
+                                      {value}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
@@ -306,8 +415,8 @@ export function ReviewWritePage() {
               <div className="flex flex-wrap gap-2">
                 {examTypeOptions.map((item) => {
                   const isChecked = examTypes.includes(item);
-                  return (
-                    <label key={item} className={`flex items-center px-4 py-2 rounded-full border cursor-pointer transition-all ${isChecked ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                    return (
+                    <label key={item} className={`flex items-center rounded-full border px-4 py-2 cursor-pointer transition-all ${isChecked ? 'border-[#005bac] bg-[#edf4ff] text-[#005bac]' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
                       <Checkbox
                         className="sr-only"
                         checked={isChecked}
@@ -327,7 +436,7 @@ export function ReviewWritePage() {
                 {['개인 과제 위주', '팀플 위주', '초반에만 있음', '과제 없음'].map((item) => (
                   <div key={item}>
                     <RadioGroupItem value={item} id={`assign-${item}`} className="peer sr-only" />
-                    <Label htmlFor={`assign-${item}`} className="flex justify-center p-2.5 text-sm border rounded-lg cursor-pointer peer-data-[state=checked]:bg-indigo-50 peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:text-indigo-700 hover:bg-gray-50">
+                    <Label htmlFor={`assign-${item}`} className="flex justify-center rounded-lg border p-2.5 text-sm cursor-pointer peer-data-[state=checked]:border-[#005bac] peer-data-[state=checked]:bg-[#edf4ff] peer-data-[state=checked]:text-[#005bac] hover:bg-gray-50">
                       {item}
                     </Label>
                   </div>
@@ -342,7 +451,7 @@ export function ReviewWritePage() {
                 {['무조건 사야함 (필수)', '참고용', '교수님 PPT 위주', '거의 안 씀'].map((item) => (
                   <div key={item}>
                     <RadioGroupItem value={item} id={`book-${item}`} className="peer sr-only" />
-                    <Label htmlFor={`book-${item}`} className="flex justify-center p-2.5 text-sm border rounded-lg cursor-pointer peer-data-[state=checked]:bg-indigo-50 peer-data-[state=checked]:border-indigo-500 peer-data-[state=checked]:text-indigo-700 hover:bg-gray-50">
+                    <Label htmlFor={`book-${item}`} className="flex justify-center rounded-lg border p-2.5 text-sm cursor-pointer peer-data-[state=checked]:border-[#005bac] peer-data-[state=checked]:bg-[#edf4ff] peer-data-[state=checked]:text-[#005bac] hover:bg-gray-50">
                       {item}
                     </Label>
                   </div>
@@ -352,16 +461,17 @@ export function ReviewWritePage() {
 
             {/* 추천 대상 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-              <div className="flex flex-col h-full bg-green-50/50 p-5 rounded-2xl border border-green-100 shadow-sm">
+              <div className="flex h-full flex-col rounded-2xl border border-[#c9efd9] bg-[linear-gradient(180deg,#f4fcf7_0%,#edf9f1_100%)] p-5 shadow-[0_14px_30px_rgba(23,114,69,0.06)]">
                 <div className="flex-1 space-y-4">
-                  <Label className="text-sm font-bold text-green-800 flex items-center gap-1.5">
+                  <Label className="text-sm font-black text-[#177245] flex items-center gap-1.5">
                     <Plus className="w-3.5 h-3.5" />
-                    이런 분들께 추천해요
+                    추천해요
                   </Label>
+                  <p className="text-xs font-medium text-slate-500">잘 맞는 수강생 유형을 골라두면 훨씬 읽기 쉬워집니다.</p>
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-wrap gap-2">
                       {recommendOptions.map((item) => (
-                        <label key={item} className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg border text-[13px] font-bold transition-all ${recommendFor.includes(item) ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-white text-green-700 border-green-200 hover:bg-green-50'}`}>
+                        <label key={item} className={`flex items-center gap-2 cursor-pointer rounded-lg border px-3 py-1.5 text-[13px] font-bold transition-all ${recommendFor.includes(item) ? 'border-[#177245] bg-[#177245] text-white shadow-sm' : 'border-[#c9efd9] bg-white text-[#177245] hover:bg-[#eefaf2]'}`}>
                           <Checkbox className="sr-only" checked={recommendFor.includes(item)} onCheckedChange={() => toggleSelection(item, recommendFor, setRecommendFor)} />
                           {item}
                         </label>
@@ -370,7 +480,7 @@ export function ReviewWritePage() {
 
                     <div className="flex flex-wrap gap-1.5 min-h-[24px]">
                       {recommendFor.filter(item => !recommendOptions.includes(item)).map(item => (
-                        <span key={item} className="bg-white text-green-700 font-bold px-2.5 py-1 rounded-md text-[11px] flex items-center gap-1 border border-green-100 shadow-sm">
+                        <span key={item} className="flex items-center gap-1 rounded-md border border-[#c9efd9] bg-white px-2.5 py-1 text-[11px] font-bold text-[#177245] shadow-sm">
                           {item}
                           <button type="button" onClick={() => toggleSelection(item, recommendFor, setRecommendFor)}><X className="w-2.5 h-2.5" /></button>
                         </span>
@@ -382,7 +492,7 @@ export function ReviewWritePage() {
                 <div className="mt-auto pt-4">
                   <div className="flex gap-2">
                     <Input
-                      placeholder="추천 항목 직접 추가..."
+                      placeholder="추천 대상을 직접 추가"
                       value={tempRecommend}
                       onChange={(e) => setTempRecommend(e.target.value)}
                       onKeyDown={(e) => {
@@ -394,7 +504,7 @@ export function ReviewWritePage() {
                           }
                         }
                       }}
-                      className="bg-white border-green-100 focus:border-green-400 focus:ring-green-400 rounded-xl text-sm"
+                      className="rounded-xl border-[#c9efd9] bg-white text-sm focus:border-[#177245] focus:ring-[#177245]"
                     />
                     <Button
                       type="button"
@@ -404,7 +514,7 @@ export function ReviewWritePage() {
                           setTempRecommend('');
                         }
                       }}
-                      className="bg-green-600 hover:bg-green-700 text-white rounded-xl h-10 w-10 p-0 shrink-0"
+                      className="h-10 w-10 shrink-0 rounded-xl bg-[#177245] p-0 text-white hover:bg-[#135e3a]"
                     >
                       <Plus className="w-5 h-5" />
                     </Button>
@@ -412,16 +522,17 @@ export function ReviewWritePage() {
                 </div>
               </div>
 
-              <div className="flex flex-col h-full space-y-4 bg-red-50/50 p-5 rounded-2xl border border-red-100 shadow-sm">
+              <div className="flex h-full flex-col space-y-4 rounded-2xl border border-[#f3d4d4] bg-[linear-gradient(180deg,#fff8f8_0%,#fff2f2_100%)] p-5 shadow-[0_14px_30px_rgba(196,59,59,0.06)]">
                 <div className="flex-1 space-y-4">
-                  <Label className="text-sm font-bold text-red-800 flex items-center gap-1.5">
+                  <Label className="text-sm font-black text-[#c43b3b] flex items-center gap-1.5">
                     <X className="w-3.5 h-3.5" />
-                    이런 분들은 피하세요
+                    비추천 대상
                   </Label>
+                  <p className="text-xs font-medium text-slate-500">피하는 게 좋은 유형도 같이 적어두면 맥락이 더 잘 보입니다.</p>
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-wrap gap-2">
                       {notRecommendOptions.map((item) => (
-                        <label key={item} className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg border text-[13px] font-bold transition-all ${notRecommendFor.includes(item) ? 'bg-red-600 text-white border-red-600 shadow-sm' : 'bg-white text-red-700 border-red-200 hover:bg-red-50'}`}>
+                        <label key={item} className={`flex items-center gap-2 cursor-pointer rounded-lg border px-3 py-1.5 text-[13px] font-bold transition-all ${notRecommendFor.includes(item) ? 'border-[#c43b3b] bg-[#c43b3b] text-white shadow-sm' : 'border-[#f3d4d4] bg-white text-[#c43b3b] hover:bg-[#fff3f3]'}`}>
                           <Checkbox className="sr-only" checked={notRecommendFor.includes(item)} onCheckedChange={() => toggleSelection(item, notRecommendFor, setNotRecommendFor)} />
                           {item}
                         </label>
@@ -430,7 +541,7 @@ export function ReviewWritePage() {
 
                     <div className="flex flex-wrap gap-1.5 min-h-[24px]">
                       {notRecommendFor.filter(item => !notRecommendOptions.includes(item)).map(item => (
-                        <span key={item} className="bg-white text-red-700 font-bold px-2.5 py-1 rounded-md text-[11px] flex items-center gap-1 border border-red-100 shadow-sm">
+                        <span key={item} className="flex items-center gap-1 rounded-md border border-[#f3d4d4] bg-white px-2.5 py-1 text-[11px] font-bold text-[#c43b3b] shadow-sm">
                           {item}
                           <button type="button" onClick={() => toggleSelection(item, notRecommendFor, setNotRecommendFor)}><X className="w-2.5 h-2.5" /></button>
                         </span>
@@ -442,7 +553,7 @@ export function ReviewWritePage() {
                 <div className="mt-auto pt-2">
                   <div className="flex gap-2">
                     <Input
-                      placeholder="비추천 항목 직접 추가..."
+                      placeholder="비추천 대상을 직접 추가"
                       value={tempNotRecommend}
                       onChange={(e) => setTempNotRecommend(e.target.value)}
                       onKeyDown={(e) => {
@@ -454,7 +565,7 @@ export function ReviewWritePage() {
                           }
                         }
                       }}
-                      className="bg-white border-red-100 focus:border-red-400 focus:ring-red-400 rounded-xl text-sm"
+                      className="rounded-xl border-[#f3d4d4] bg-white text-sm focus:border-[#c43b3b] focus:ring-[#c43b3b]"
                     />
                     <Button
                       type="button"
@@ -464,7 +575,7 @@ export function ReviewWritePage() {
                           setTempNotRecommend('');
                         }
                       }}
-                      className="bg-red-600 hover:bg-red-700 text-white rounded-xl h-10 w-10 p-0 shrink-0"
+                      className="h-10 w-10 shrink-0 rounded-xl bg-[#c43b3b] p-0 text-white hover:bg-[#ad3232]"
                     >
                       <Plus className="w-5 h-5" />
                     </Button>
@@ -474,30 +585,30 @@ export function ReviewWritePage() {
             </div>
 
             {/* 🔥 추가 시험 / 족보 정보 (Accordion) */}
-            <Accordion type="single" collapsible className="w-full border rounded-xl overflow-hidden shadow-sm mt-4">
+            <Accordion type="single" collapsible className="mt-4 w-full overflow-hidden rounded-xl border shadow-sm">
               <AccordionItem value="exam-info" className="border-b-0">
-                <AccordionTrigger className="px-5 py-4 bg-amber-50/50 hover:bg-amber-100/50 transition-colors font-bold text-amber-900 border-amber-100">
+                <AccordionTrigger className="border-b border-[rgba(15,23,42,0.08)] bg-[#f8fafc] px-5 py-4 font-bold text-slate-800 transition-colors hover:bg-slate-100">
                   <div className="flex items-center gap-2">
-                    <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
-                    시험 출제 방식이나 족보 등 (선택 사항)
+                    <AlertCircle className="h-4 w-4 text-[#005bac]" />
+                    시험 출제 방식, 족보, 자주 나온 키워드
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-5 py-6 bg-white">
                   <Textarea
                     value={examInfo}
                     onChange={(e) => setExamInfo(e.target.value)}
-                    placeholder="시험 문제 스타일이나 핵심 키워드, 족보와 비교해서 얼마나 나오는지 적어주세요!"
-                    className="min-h-[120px] p-4 text-sm resize-none border-gray-200 focus:border-amber-400 focus:ring-amber-400 rounded-xl leading-relaxed mb-6"
+                    placeholder="시험 문제 스타일이나 자주 나온 범위, 족보 체감 정도를 적어주세요."
+                    className="mb-6 min-h-[120px] resize-none rounded-xl border-gray-200 p-4 text-sm leading-relaxed"
                   />
 
                   <div className="space-y-3">
-                    <Label className="text-sm font-bold text-amber-800 flex items-center gap-1.5">
-                      <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                      많이 나온 키워드 추가
+                    <Label className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                      <Activity className="h-3.5 w-3.5 text-[#005bac]" />
+                      자주 나온 키워드
                     </Label>
                     <div className="flex flex-wrap gap-2 mb-3">
                       {examKeywords.map((k) => (
-                        <span key={k} className="bg-amber-50 text-amber-700 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 border border-amber-100 shadow-sm animate-in zoom-in-95 duration-200">
+                        <span key={k} className="animate-in zoom-in-95 duration-200 flex items-center gap-1.5 rounded-lg border border-[#cfe0f1] bg-[#edf4ff] px-3 py-1.5 text-xs font-bold text-[#005bac]">
                           {k}
                           <button type="button" onClick={() => removeKeyword(k)} className="hover:text-amber-900 transition-colors">
                             <X className="w-3 h-3" />
@@ -519,12 +630,13 @@ export function ReviewWritePage() {
                           }
                         }}
                         placeholder="예: 프레임워크, UML, 객체지향..."
-                        className="bg-gray-50 border-gray-100 focus:border-amber-400 focus:ring-amber-400 rounded-xl"
+                        className="rounded-xl bg-gray-50 border-gray-100"
                       />
                       <Button
                         type="button"
                         onClick={addKeyword}
-                        className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl aspect-square p-0 w-10 shrink-0"
+                        variant="outline"
+                        className="aspect-square w-10 shrink-0 rounded-xl p-0"
                       >
                         <Plus className="w-5 h-5" />
                       </Button>
@@ -546,8 +658,8 @@ export function ReviewWritePage() {
               <Textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="전반적인 강의 만족도, 아쉬웠던 점, 교수님의 특징 등을 자유롭게 적어주세요. 후배들에게 큰 도움이 됩니다!"
-                className="min-h-[160px] p-4 text-base resize-none border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 rounded-xl leading-relaxed"
+                placeholder="수업 방식, 과제나 시험 체감, 교수님 스타일, 후배에게 알려주고 싶은 점을 적어주세요."
+                className="min-h-[160px] resize-none rounded-xl border-gray-200 p-4 text-base leading-relaxed"
               />
             </div>
 
@@ -556,18 +668,19 @@ export function ReviewWritePage() {
               <Button type="button" variant="outline" size="lg" onClick={() => navigate(-1)} disabled={isSubmitting} className="sm:w-32 rounded-xl">
                 취소
               </Button>
-              <Button type="submit" size="lg" disabled={isSubmitting} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all">
+              <Button type="submit" size="lg" disabled={isSubmitting} className="flex-1 rounded-xl font-bold">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     제출 중...
                   </>
                 ) : (
-                  '강의평 등록하고 30P 받기'
+                  '강의평 등록하기'
                 )}
               </Button>
             </div>
 
+            <p className="text-center text-sm font-medium text-slate-500">등록이 완료되면 30P가 지급됩니다.</p>
             <p className="text-center text-sm text-gray-400 flex items-center justify-center gap-1.5 mt-4">
               <AlertCircle className="w-4 h-4" /> 허위 사실이나 비방 목적의 리뷰는 제재될 수 있습니다.
             </p>

@@ -417,16 +417,13 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 blur-3xl opacity-20 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-200 animate-blob"></div>
-        <div className="absolute top-[20%] right-[-10%] w-[30%] h-[30%] rounded-full bg-sky-100 animate-blob animation-delay-2000"></div>
-        <div className="absolute bottom-[-20%] left-[20%] w-[40%] h-[40%] rounded-full bg-indigo-100 animate-blob animation-delay-4000"></div>
-      </div>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(0,91,172,0.10),transparent_24%),linear-gradient(180deg,#f3f6f8_0%,#f8fbfd_100%)]" />
 
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 lg:p-10 border border-gray-100">
-        <div className="text-center mb-8 space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 mb-3 shadow-lg shadow-indigo-100">
+      <div className="w-full max-w-md overflow-hidden rounded-[2rem] border border-[rgba(15,23,42,0.08)] bg-white/96 shadow-[0_30px_80px_rgba(15,23,42,0.10)] backdrop-blur">
+        <div className="w-full bg-white p-8 lg:p-10">
+        <div className="mb-8 space-y-2 text-center">
+          <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[#005bac] shadow-lg shadow-[#005bac]/15">
             {isFindPwd ? <Lock className="w-7 h-7 text-white" /> : <GraduationCap className="w-7 h-7 text-white" />}
           </div>
           <h1 className="text-3xl font-bold text-gray-900">
@@ -434,20 +431,20 @@ export function AuthPage({ onLogin }: AuthPageProps) {
           </h1>
           <p className="text-sm text-gray-500 font-medium">
             {isLogin
-              ? '서비스를 이용하려면 로그인해주세요'
+              ? '로그인 후 이용할 수 있습니다'
               : isSignup
-                ? (signupStep === 1 ? '메일 링크 인증과 휴대폰 인증을 완료해주세요' : '가입에 필요한 정보를 입력해주세요')
-                : '등록된 이메일과 전화번호로 본인 확인을 진행합니다'}
+                ? (signupStep === 1 ? '이메일과 휴대폰 인증을 진행해주세요' : '기본 정보를 입력해주세요')
+                : '본인 확인 후 비밀번호를 재설정합니다'}
           </p>
         </div>
 
         {isSignup && (
           <div className="flex items-center justify-center gap-3 mb-8">
-            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all ${signupStep === 1 ? 'bg-indigo-600 text-white shadow-md ring-4 ring-indigo-50' : 'bg-emerald-100 text-emerald-600'}`}>
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all ${signupStep === 1 ? 'bg-[#005bac] text-white shadow-md ring-4 ring-[#edf4ff]' : 'bg-[#edf4ff] text-[#005bac]'}`}>
               {signupStep > 1 ? <CheckCircle2 className="w-5 h-5" /> : '1'}
             </div>
             <div className={`h-0.5 w-10 transition-all ${signupStep > 1 ? 'bg-emerald-200' : 'bg-slate-100'}`} />
-            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all ${signupStep === 2 ? 'bg-indigo-600 text-white shadow-md ring-4 ring-indigo-50' : 'bg-slate-100 text-slate-400'}`}>
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all ${signupStep === 2 ? 'bg-[#005bac] text-white shadow-md ring-4 ring-[#edf4ff]' : 'bg-slate-100 text-slate-400'}`}>
               2
             </div>
           </div>
@@ -629,11 +626,9 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                         </Button>
                       </div>
                       {isEmailSent && (
-                        <div className="space-y-3 rounded-xl bg-white p-3 border border-indigo-100">
+                        <div className="rounded-xl border border-indigo-100 bg-white p-3">
                           {!isEmailVerified ? (
-                            <p className="text-xs leading-5 text-slate-600">
-                              메일의 인증 링크를 누르면 이 화면이 자동으로 갱신됩니다. 인증 후 원래 창으로 돌아와주세요.
-                            </p>
+                            <p className="text-xs leading-5 text-slate-600">메일 인증 후 이 화면으로 돌아와주세요.</p>
                           ) : (
                             <p className="text-xs font-semibold text-emerald-600">이메일 인증이 완료되었습니다.</p>
                           )}
@@ -801,6 +796,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
             )}
           </div>
         </form>
+      </div>
       </div>
     </div>
   );

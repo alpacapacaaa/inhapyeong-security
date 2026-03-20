@@ -39,9 +39,9 @@ export function EmailVerifyPage() {
   }, [searchParams]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 text-center shadow-xl">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-white">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-[radial-gradient(circle_at_top,rgba(0,91,172,0.10),transparent_22%),linear-gradient(180deg,#f3f6f8_0%,#f8fbfd_100%)]">
+      <div className="w-full max-w-md rounded-3xl border border-[rgba(15,23,42,0.08)] bg-white p-8 text-center shadow-[0_24px_60px_rgba(15,23,42,0.10)]">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#005bac] text-white">
           {status === 'loading' && <Loader2 className="h-7 w-7 animate-spin" />}
           {status === 'success' && <CheckCircle2 className="h-7 w-7" />}
           {status === 'error' && <MailWarning className="h-7 w-7" />}
@@ -59,7 +59,7 @@ export function EmailVerifyPage() {
           <Button
             type="button"
             onClick={() => window.close()}
-            className="w-full rounded-2xl bg-indigo-600 text-white hover:bg-indigo-700"
+            className="w-full rounded-2xl"
           >
             창 닫기
           </Button>
