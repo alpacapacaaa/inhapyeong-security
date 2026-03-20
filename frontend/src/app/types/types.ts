@@ -3,6 +3,7 @@ export interface Course {
   name: string;
   professor: string;
   department: string;
+  credits?: number;
   rating: number;
   reviewCount: number;
   difficulty: 'easy' | 'medium' | 'hard';

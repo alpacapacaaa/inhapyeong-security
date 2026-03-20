@@ -380,15 +380,15 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
         </div>
       )}
 
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto space-y-6">
+      <div className="min-h-screen">
+        <div className="page-shell py-8">
+          <div className="space-y-6">
 
             {/* ─── 프로필 카드 ─── */}
-            <div className="bg-white rounded-[2rem] p-6 md:p-8 shadow-sm border border-gray-100">
+            <div className="page-panel p-6 md:p-8">
               <div className="flex items-center gap-5">
-                <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center shrink-0">
-                  <UserIcon className="w-8 h-8 text-indigo-600" />
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#edf4ff]">
+                  <UserIcon className="w-8 h-8 text-[#005bac]" />
                 </div>
                 <div className="flex-1">
                   <h1 className="text-2xl font-bold text-gray-900">
@@ -406,12 +406,12 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
 
             {/* ─── 포인트 & 열람권 요약 ─── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="rounded-2xl border-gray-100 shadow-sm">
+              <Card className="rounded-2xl border-[rgba(15,23,42,0.08)] shadow-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-yellow-50 rounded-xl flex items-center justify-center">
-                        <Coins className="w-6 h-6 text-yellow-500" />
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#edf4ff]">
+                        <Coins className="w-6 h-6 text-[#005bac]" />
                       </div>
                       <div>
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">현재 포인트</p>
@@ -422,12 +422,12 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                 </CardContent>
               </Card>
 
-              <Card className="rounded-2xl border-gray-100 shadow-sm">
+              <Card className="rounded-2xl border-[rgba(15,23,42,0.08)] shadow-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
-                        <ShieldCheck className="w-6 h-6 text-green-500" />
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#edf4ff]">
+                        <ShieldCheck className="w-6 h-6 text-[#005bac]" />
                       </div>
                       <div>
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">열람권</p>
@@ -443,7 +443,7 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                         size="sm"
                         disabled={user.points < 50}
                         onClick={handlePurchasePass}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs h-9 px-4"
+                        className="rounded-xl text-xs font-bold h-9 px-4"
                       >
                         구매 -50P
                       </Button>
@@ -454,7 +454,8 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
             </div>
 
             {/* ─── 📢 공지사항 ─── */}
-            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
+            <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+            <div className="page-panel p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <Megaphone className="w-5 h-5 text-amber-500" />
@@ -463,7 +464,7 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                 {notices.length > 2 && (
                   <button
                     onClick={() => setShowAllNotices(!showAllNotices)}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                    className="text-xs font-bold text-[#005bac] hover:text-[#004a8c] flex items-center gap-1"
                   >
                     {showAllNotices ? '접기' : '전체보기'}
                     <ChevronRight className="w-3 h-3" />
@@ -502,8 +503,7 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
               </div>
             </div>
 
-            {/* ─── 💰 포인트 내역 (최근 3개 미리보기) ─── */}
-            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
+            <div className="page-panel p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <Coins className="w-5 h-5 text-yellow-500" />
@@ -549,12 +549,13 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                 <p className="text-center text-xs text-gray-400 mt-3">모든 내역을 표시하고 있습니다.</p>
               )}
             </div>
+            </div>
 
             {/* ─── ✏️ 내가 쓴 강의평 ─── */}
-            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
+            <div className="page-panel p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <PenTool className="w-5 h-5 text-indigo-500" />
-                내가 쓴 강의평 <span className="text-indigo-600">{userReviews.length}</span>
+                <PenTool className="w-5 h-5 text-[#005bac]" />
+                내가 쓴 강의평 <span className="text-[#005bac]">{userReviews.length}</span>
               </h2>
               <div className="space-y-1">
                 {userReviews.map((review) => (
@@ -596,7 +597,7 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
             </div>
 
             {/* ─── ⚙️ 내 정보 수정 ─── */}
-            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
+            <div className="page-panel p-6">
               <button
                 onClick={() => toggleSection('profile')}
                 className="w-full flex items-center justify-between"
