@@ -53,6 +53,9 @@ public class Member {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "pass_expiry_date")
+    private LocalDateTime passExpiryDate;   // 열람권
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
@@ -67,4 +70,14 @@ public class Member {
     public void verify() { this.isVerified = true; }
     public void deactivate() { this.isActive = false; }
     public void updatePassword(String newPassword) { this.password = newPassword; }
+    public void extendPass(long days) {
+        if (this.passExpiryDate != null && 
+        this.passExpiryDate.isAfter(LocalDateTime.now())) {
+            this.passExpiryDate = this.passExpiryDate.plusDays(days); 
+        } else {
+            this.passExpiryDate = LocalDateTime.now().plusDays(days);
+        }
+    }
+
+    
 }
