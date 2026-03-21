@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Search } from 'lucide-react';
+import annyongiRunA from '../../assets/annyongi-run-a.png';
+import annyongiRunB from '../../assets/annyongi-run-b.png';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { CourseCard } from '../components/CourseCard';
@@ -76,45 +78,43 @@ export function HomePage() {
   return (
     <div className="min-h-screen pb-20">
       <div className="page-shell pt-8">
-        <section className="relative overflow-hidden rounded-[2rem] border border-[rgba(15,23,42,0.08)] bg-white px-6 py-10 md:px-8">
+        <section className="relative overflow-hidden rounded-[2.25rem] border border-[rgba(15,23,42,0.08)] px-6 py-12 md:px-10 md:py-16">
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="mascot-badge animate-mascot-a left-[-1.5rem] top-[18%] hidden lg:flex opacity-80">
-              <div className="mascot-core">안</div>
-              <div>
-                <p className="text-sm font-black text-slate-900">안뇽이</p>
-                <p className="text-xs text-slate-500">캠퍼스를 뛰어다니는 중</p>
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(0,91,172,0.08)_0%,rgba(255,255,255,0.78)_45%,rgba(15,23,42,0.04)_100%)]" />
+            <div className="absolute -left-10 top-[8%] h-56 w-56 rounded-full bg-[#dfeefe] blur-3xl" />
+            <div className="absolute right-[-3rem] top-[10%] h-64 w-64 rounded-full bg-[#eef3ea] blur-3xl" />
+            <div className="absolute left-[8%] bottom-[-6rem] h-48 w-48 rounded-full bg-[rgba(15,23,42,0.06)] blur-3xl" />
+
+            <div className="hero-mascot hero-mascot-right animate-hero-mascot-right hidden md:block">
+              <div className="hero-mascot-sprite">
+                <div className="hero-mascot-pose hero-mascot-pose-a">
+                  <img src={annyongiRunA} alt="" className="hero-mascot-figure hero-mascot-img" aria-hidden="true" />
+                </div>
+                <div className="hero-mascot-pose hero-mascot-pose-b">
+                  <img src={annyongiRunB} alt="" className="hero-mascot-figure hero-mascot-img" aria-hidden="true" />
+                </div>
               </div>
             </div>
-            <div className="mascot-badge animate-mascot-b right-[-1.5rem] top-[16%] hidden lg:flex opacity-80">
-              <div className="mascot-core">인</div>
-              <div>
-                <p className="text-sm font-black text-slate-900">인덕이</p>
-                <p className="text-xs text-slate-500">강의평 탐색 도와주는 중</p>
-              </div>
+
+            <div className="hero-ground hero-ground-track hidden xl:block" aria-hidden="true">
+              <span className="hero-ground-dot hero-ground-dot-a" />
+              <span className="hero-ground-dot hero-ground-dot-b" />
+              <span className="hero-ground-dot hero-ground-dot-c" />
             </div>
-            <div className="mascot-badge animate-mascot-c bottom-[10%] right-[4%] hidden xl:flex opacity-75">
-              <div className="mascot-core">안</div>
-              <div>
-                <p className="text-sm font-black text-slate-900">안뇽이</p>
-                <p className="text-xs text-slate-500">이번 학기 강의 체크</p>
-              </div>
-            </div>
-            <div className="absolute left-[-4rem] top-[10%] h-48 w-48 rounded-full bg-[#edf4ff] blur-3xl" />
-            <div className="absolute right-[-4rem] top-[18%] h-56 w-56 rounded-full bg-[#f2f7fc] blur-3xl" />
           </div>
 
           <div className="relative z-10 mx-auto max-w-5xl">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#005bac]">인하대학교 강의평</p>
-            <h1 className="mt-4 max-w-2xl text-3xl font-black tracking-tight text-slate-950 md:text-[3.15rem] md:leading-[1.02]">
-              강의를 검색하고
-              <br />
-              바로 비교하세요.
-            </h1>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600 md:text-base">
-              강의명이나 교수님 이름으로 빠르게 찾아볼 수 있습니다.
-            </p>
+            <div className="max-w-3xl">
+              <p className="text-[12px] font-black uppercase tracking-[0.28em] text-[#005bac]">INHAPYUNG | ARCHIVE</p>
+              <h1 className="mt-5 text-4xl font-black tracking-[-0.07em] text-slate-950 md:text-[4.8rem] md:leading-[0.96]">
+                인하평
+              </h1>
+              <p className="mt-4 max-w-xl text-base font-semibold text-slate-600 md:text-lg">
+                강의 탐색부터 강의평 비교, 시간표 담기까지 한 번에.
+              </p>
+            </div>
 
-            <form onSubmit={handleSearch} className="mt-8 max-w-4xl">
+            <form onSubmit={handleSearch} className="mt-10 max-w-4xl">
               <div className="flex flex-col gap-3 md:flex-row">
                 <div className="relative flex-1">
                   <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -123,19 +123,20 @@ export function HomePage() {
                     placeholder="강의명, 교수님, 학과로 검색"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-16 rounded-full pl-12 pr-5 text-base md:text-lg"
+                    className="h-[72px] rounded-full border-white/80 bg-white/96 pl-12 pr-5 text-base shadow-[0_18px_48px_rgba(15,23,42,0.08)] md:text-lg"
                   />
                 </div>
-                <Button type="submit" size="lg" className="h-16 rounded-full px-8 text-base">
+                <Button type="submit" size="lg" className="h-[72px] rounded-full px-8 text-base">
                   검색
                 </Button>
               </div>
             </form>
+
           </div>
         </section>
       </div>
 
-      <div className="page-shell mt-10 space-y-12">
+      <div className="page-shell mt-12 space-y-14">
         <section>
           <SectionHeader title="최근 등록된 강의평가" description="최근에 리뷰가 쌓인 강의입니다." />
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">

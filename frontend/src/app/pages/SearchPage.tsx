@@ -16,16 +16,21 @@ import {
   saveTimetableCartIds,
 } from '../data/timetableData';
 import { Course } from '../types/types';
+import { StarRating } from '../components/StarRating';
 import {
   AlertTriangle,
+  BookOpen,
   CalendarClock,
   ChevronDown,
   ChevronUp,
   ShoppingBag,
-  Star,
   X,
 } from 'lucide-react';
-const CURRENT_OPEN_COURSE_IDS = new Set(['1', '3', '6', '8', '9', '101', '202', '206']);
+import { CURRENT_SEMESTER_SHORT_LABEL } from '../lib/semester';
+const CURRENT_OPEN_COURSE_IDS = new Set([
+  '1', '2', '3', '4', '5', '6', '8', '9', '101',
+  '201', '202', '203', '204', '205', '206', '301', '302', '303', '304', '305', '306',
+]);
 
 type SearchResultItem = Course & {
   isOpenCurrent: boolean;
@@ -299,82 +304,58 @@ function SearchResultCard({
   isInCart: boolean;
   onToggleCart: (courseId: string) => void;
 }) {
-  const stars = Array.from({ length: 5 }, (_, i) => i < Math.round(course.rating));
-
   return (
-    <Card className="overflow-hidden rounded-[2rem] border border-[rgba(15,23,42,0.08)] bg-white transition-all hover:-translate-y-0.5 hover:border-[#005bac]/20 hover:shadow-[0_24px_50px_rgba(15,23,42,0.08)]">
+    <Card className="overflow-hidden rounded-[1.6rem] border border-[rgba(15,23,42,0.08)] bg-[#fcfdff] transition-all hover:border-[#005bac]/18 hover:shadow-[0_20px_40px_rgba(15,23,42,0.06)]">
       <CardContent className="p-0">
-        <div className="p-6 md:p-7">
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="p-5 md:p-6">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0">
-                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#1084e8]">
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#005bac]">
                   {course.category === '전공' ? '전공 강의' : '교양 강의'}
                 </p>
-                <h3 className="mt-3 text-2xl font-black tracking-tight text-slate-900 md:text-[2rem]">
+                <h3 className="mt-2 text-xl font-black tracking-tight text-slate-900 md:text-[1.55rem]">
                   {course.name}
                 </h3>
-                <p className="mt-2 text-base font-semibold text-slate-500 md:text-lg">
+                <p className="mt-1.5 text-sm font-semibold text-slate-600 md:text-[15px]">
                   {course.professor} 교수님 · {course.department}
                 </p>
               </div>
-              <div className="flex flex-row flex-wrap items-center gap-2 md:flex-col md:items-end">
-                <Badge className="rounded-full px-4 py-2 text-sm font-bold">
+              <div className="flex flex-row flex-wrap items-center gap-2 md:justify-end">
+                <Badge className="rounded-full border border-[rgba(15,23,42,0.08)] bg-white px-3 py-1.5 text-xs font-bold text-slate-700">
                   {course.type}
                 </Badge>
                 <span
-                  className={`rounded-full px-3 py-1 text-xs font-black ${
+                  className={`rounded-full px-3 py-1.5 text-xs font-black ${
                     course.isOpenCurrent
-                      ? 'bg-[#e9f8ef] text-[#177245]'
+                      ? 'border border-[rgba(0,91,172,0.08)] bg-[#edf4ff] text-[#005bac]'
                       : 'bg-slate-100 text-slate-500'
                   }`}
                 >
-                  {course.isOpenCurrent ? '26-1 개설 중' : '현재 미개설'}
+                  {course.isOpenCurrent ? `${CURRENT_SEMESTER_SHORT_LABEL} 개설 중` : '현재 미개설'}
                 </span>
               </div>
             </div>
 
-            <div className="rounded-[1.75rem] border border-[rgba(15,23,42,0.08)] bg-[#f7fafc] px-5 py-5">
-              <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">평점</p>
-                  <div className="mt-3 flex items-end gap-2">
-                    <span className="text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
-                      {course.rating.toFixed(1)}
-                    </span>
-                    <span className="pb-1 text-2xl font-bold text-slate-300">/ 5.0</span>
-                  </div>
-                </div>
-                <div className="text-left md:text-right">
-                  <div className="flex items-center gap-1 md:justify-end">
-                    {stars.map((filled, index) => (
-                      <Star
-                        key={index}
-                        className={`h-7 w-7 ${filled ? 'fill-[#005bac] text-[#005bac]' : 'text-[#c8d0d9]'}`}
-                      />
-                    ))}
-                  </div>
-                  <p className="mt-2 text-base font-bold text-slate-500">리뷰 {course.reviewCount}개</p>
-                </div>
+            <div className="flex flex-col gap-3 border-y border-[rgba(15,23,42,0.08)] py-4 md:flex-row md:items-center md:justify-between">
+              <StarRating value={course.rating} size="md" reviewCount={course.reviewCount} />
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600">
+                  난이도 {difficultyLabel[course.difficulty]}
+                </Badge>
+                <Badge className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600">
+                  학습량 {workloadLabel[course.workload]}
+                </Badge>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge className="rounded-full px-4 py-2 text-base font-semibold text-slate-600">
-                난이도 {difficultyLabel[course.difficulty]}
-              </Badge>
-              <Badge className="rounded-full px-4 py-2 text-base font-semibold text-slate-600">
-                학습량 {workloadLabel[course.workload]}
-              </Badge>
-            </div>
-
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button type="button" variant={isInCart ? 'secondary' : 'outline'} onClick={() => onToggleCart(course.id)} className="h-12 rounded-full px-5 text-sm font-bold">
+              <Button type="button" variant={isInCart ? 'secondary' : 'outline'} onClick={() => onToggleCart(course.id)} className="h-11 rounded-full px-5 text-sm font-bold">
                 <ShoppingBag className="h-4 w-4" />
                 {isInCart ? '장바구니에서 제거' : '시간표 장바구니 담기'}
               </Button>
 
-              <Button asChild className="h-12 rounded-full px-6 text-sm font-bold text-white">
+              <Button asChild className="h-11 rounded-full px-6 text-sm font-bold text-white">
                 <Link to={`/course/${course.id}`}>강의평 보러가기</Link>
               </Button>
             </div>
@@ -400,7 +381,7 @@ function SubjectAccordionCard({
 }) {
   return (
     <Card
-      className={`overflow-hidden rounded-[2rem] border transition-all ${
+      className={`overflow-hidden rounded-[1.6rem] border transition-all ${
         group.isOpenCurrent
           ? 'border-[rgba(15,23,42,0.08)] bg-white'
           : 'border-slate-200 bg-[#f3f5f7]'
@@ -411,23 +392,23 @@ function SubjectAccordionCard({
         onClick={onToggle}
         className="w-full text-left"
       >
-        <CardContent className="p-6 md:p-8">
+        <CardContent className="p-5 md:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className={`text-[11px] font-black uppercase tracking-[0.22em] ${group.isOpenCurrent ? 'text-[#1084e8]' : 'text-slate-400'}`}>
+              <p className={`text-[11px] font-black uppercase tracking-[0.22em] ${group.isOpenCurrent ? 'text-[#005bac]' : 'text-slate-500'}`}>
                 {group.category === '전공' ? '전공 강의' : '교양 강의'}
               </p>
-              <h3 className={`mt-3 text-3xl font-black tracking-tight ${group.isOpenCurrent ? 'text-slate-900' : 'text-slate-500'}`}>
+              <h3 className={`mt-2 text-xl font-black tracking-tight md:text-[1.65rem] ${group.isOpenCurrent ? 'text-slate-900' : 'text-slate-500'}`}>
                 {group.name}
               </h3>
-              <p className={`mt-3 text-base font-semibold ${group.isOpenCurrent ? 'text-slate-500' : 'text-slate-400'}`}>
+              <p className={`mt-2 text-sm font-semibold ${group.isOpenCurrent ? 'text-slate-600' : 'text-slate-400'}`}>
                 {group.department} · {group.professors.length}명
               </p>
             </div>
 
             <div className="flex items-center gap-3">
               <Badge
-                className={`rounded-full px-4 py-2 text-sm font-bold ${
+                className={`rounded-full px-3 py-1.5 text-xs font-bold ${
                   group.isOpenCurrent
                     ? 'border border-[rgba(15,23,42,0.08)] bg-[#f6f9fc] text-slate-700'
                     : 'border border-slate-200 bg-white text-slate-500'
@@ -436,7 +417,7 @@ function SubjectAccordionCard({
                 {group.type}
               </Badge>
 
-              <div className={`flex h-11 w-11 items-center justify-center rounded-full border ${group.isOpenCurrent ? 'border-[rgba(15,23,42,0.08)] bg-[#f7fafc] text-[#005bac]' : 'border-slate-200 bg-white text-slate-400'}`}>
+              <div className={`flex h-10 w-10 items-center justify-center rounded-full border ${group.isOpenCurrent ? 'border-[rgba(15,23,42,0.08)] bg-[#f7fafc] text-[#005bac]' : 'border-slate-200 bg-white text-slate-400'}`}>
                 {expanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
               </div>
             </div>
@@ -445,20 +426,18 @@ function SubjectAccordionCard({
       </button>
 
       {expanded && (
-        <div className="border-t border-[#005bac]/8 bg-white/70 px-6 pb-6 md:px-8">
-          <div className="space-y-3 pt-5">
+        <div className="border-t border-[#005bac]/8 bg-white px-5 pb-2 md:px-6">
+          <div className="divide-y divide-[rgba(15,23,42,0.08)] pt-2">
             {group.professors.map((course) => {
-              const stars = Array.from({ length: 5 }, (_, i) => i < Math.round(course.rating));
-
               return (
                 <div
                   key={course.id}
-                className="rounded-[1.5rem] border border-[rgba(15,23,42,0.08)] bg-white px-5 py-4 shadow-sm"
+                  className="py-4"
                 >
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-lg font-black text-slate-900">{course.professor} 교수님</p>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-base font-black text-slate-900">{course.professor} 교수님</p>
                         <span
                           className={`rounded-full px-2.5 py-1 text-[11px] font-black ${
                             course.isOpenCurrent
@@ -466,24 +445,14 @@ function SubjectAccordionCard({
                               : 'bg-slate-100 text-slate-500'
                           }`}
                         >
-                          {course.isOpenCurrent ? '26-1 개설' : '과거 개설'}
+                          {course.isOpenCurrent ? `${CURRENT_SEMESTER_SHORT_LABEL} 개설` : '과거 개설'}
                         </span>
-                        </div>
+                      </div>
                       <p className="mt-1 text-sm font-medium text-slate-500">리뷰 {course.reviewCount}개</p>
                     </div>
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <div className="flex items-center gap-3 rounded-full border border-[rgba(15,23,42,0.08)] bg-[#f7fafc] px-4 py-2">
-                        <div className="flex items-center gap-1">
-                          {stars.map((filled, index) => (
-                            <Star
-                              key={index}
-                              className={`h-4 w-4 ${filled ? 'fill-[#005bac] text-[#005bac]' : 'text-[#bfd3ea]'}`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-sm font-black text-slate-900">{course.rating.toFixed(1)}</span>
-                      </div>
+                      <StarRating value={course.rating} size="sm" showValue={true} />
 
                       <Button
                         type="button"
@@ -696,57 +665,71 @@ export function SearchPage() {
       }),
     [courses],
   );
-  const activeFilterCount =
-    (selectedDepartment !== '전체' ? 1 : 0) +
-    (selectedCategory !== '전체' ? 1 : 0) +
-    (selectedMajorType !== '전체' ? 1 : 0) +
-    selectedTypes.length +
-    (selectedTheme !== 'all' ? 1 : 0);
-
   return (
     <div className="min-h-screen">
       <div className="page-shell py-8">
+        <section className="mb-6 page-panel bg-[linear-gradient(135deg,#f7fbff_0%,#ffffff_100%)] px-6 py-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="section-kicker">Course Browse</p>
+              <h1 className="mt-2 text-[1.9rem] font-black tracking-[-0.04em] text-slate-950 md:text-[2.1rem]">
+                강의를 둘러보고, 바로 시간표 후보에 담아보세요.
+              </h1>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                전공, 교양, 학과, 현재 개설 여부를 기준으로 강의를 정리해서 볼 수 있습니다.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {selectedDepartment !== '전체' ? <span className="outline-chip">{selectedDepartment}</span> : null}
+              {selectedCategory !== '전체' ? <span className="outline-chip">{selectedCategory}</span> : null}
+              {query ? <span className="outline-chip">"{query}"</span> : null}
+            </div>
+          </div>
+        </section>
+
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
           <aside>
-            <div className="sticky top-24 rounded-[2rem] border border-[rgba(15,23,42,0.08)] bg-white p-6 shadow-[0_18px_48px_rgba(15,23,42,0.05)]">
+            <div className="page-panel sticky top-24 p-5">
               <div className="space-y-8">
                 <div className="space-y-3">
                   <div className={`rounded-[1.5rem] border px-4 py-4 ${
                     selectedDepartment === '전체'
-                      ? 'border-slate-200 bg-[#f7fafc]'
-                      : 'border-[#cfe0f1] bg-[#edf4ff]'
+                      ? 'border-slate-200 bg-[#fafbfd]'
+                      : 'border-[#d9e6f4] bg-[#f5f9ff]'
                   }`}>
                     <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">선택 학과</p>
-                    <p className={`mt-2 text-2xl font-black tracking-tight ${
-                      selectedDepartment === '전체' ? 'text-slate-900' : 'text-[#005bac]'
-                    }`}>
-                      {selectedDepartment}
-                    </p>
-                    <p className="mt-2 text-sm font-medium text-slate-500">
-                      {selectedDepartment === '전체'
-                        ? '전체 학과 기준으로 강의를 보고 있습니다.'
-                        : '이 학과를 기준으로 강의 목록과 검색 결과를 먼저 보여줍니다.'}
-                    </p>
-                    {activeFilterCount > 0 && (
-                      <span className="mt-3 inline-flex rounded-full border border-white/80 bg-white px-3 py-1 text-xs font-black text-slate-600">
-                        필터 {activeFilterCount}개 적용
-                      </span>
-                    )}
-                  </div>
-                  <label className="text-[12px] font-black uppercase tracking-[0.18em] text-slate-400">학과 변경</label>
-                  <div>
-                    <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                      <SelectTrigger className="h-11 rounded-xl bg-white font-semibold text-slate-700">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map((department) => (
-                          <SelectItem key={department} value={department}>
-                            {department}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="mt-2 flex flex-col gap-4">
+                      <div>
+                        <p className={`text-2xl font-black tracking-tight ${
+                          selectedDepartment === '전체' ? 'text-slate-900' : 'text-[#005bac]'
+                        }`}>
+                          {selectedDepartment}
+                        </p>
+                        <p className="mt-2 text-sm font-medium text-slate-500">
+                          {selectedDepartment === '전체'
+                            ? '전체 학과 기준으로 강의를 보고 있습니다.'
+                            : '이 학과를 기준으로 강의 목록과 검색 결과를 먼저 보여줍니다.'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-[12px] font-black uppercase tracking-[0.18em] text-slate-400">학과 변경</label>
+                        <div className="mt-3">
+                          <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                            <SelectTrigger className="h-11 rounded-xl border-white/70 bg-white font-semibold text-slate-700">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {departments.map((department) => (
+                                <SelectItem key={department} value={department}>
+                                  {department}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -848,10 +831,6 @@ export function SearchPage() {
                     </div>
                   )}
 
-                  <Button type="button" variant="outline" onClick={() => setIsCartPanelOpen(true)} className="w-full justify-between rounded-[1rem] px-4">
-                    시간표 장바구니
-                    <span className="text-[#005bac]">{cartIds.length}</span>
-                  </Button>
                 </div>
               </div>
             </div>
@@ -890,8 +869,14 @@ export function SearchPage() {
                 ))}
 
                 {sortedSearchResults.length === 0 && (
-                  <div className="rounded-[2rem] border border-[rgba(15,23,42,0.08)] bg-white p-12 text-center shadow-sm">
-                    <p className="text-lg font-bold text-slate-500">검색 결과가 없습니다.</p>
+                  <div className="rounded-[2rem] border border-dashed border-[rgba(15,23,42,0.12)] bg-white p-12 text-center shadow-sm">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#f5f8fc] text-slate-400">
+                      <BookOpen className="h-6 w-6" />
+                    </div>
+                    <p className="mt-4 text-lg font-bold text-slate-700">검색 결과가 없습니다.</p>
+                    <p className="mt-2 text-sm font-medium text-slate-500">
+                      다른 강의명이나 교수님 이름으로 다시 찾아보거나 학과 필터를 풀어보세요.
+                    </p>
                   </div>
                 )}
               </div>
@@ -913,16 +898,25 @@ export function SearchPage() {
                   </div>
 
                   <div className="space-y-4">
-                    {sortByKoreanName(currentOpenSubjects).map((group) => (
-                      <SubjectAccordionCard
-                        key={group.key}
-                        group={group}
-                        expanded={expandedSubjects.includes(group.key)}
-                        onToggle={() => toggleSubject(group.key)}
-                        cartIds={cartIds}
-                        onToggleCart={toggleCart}
-                      />
-                    ))}
+                    {currentOpenSubjects.length > 0 ? (
+                      sortByKoreanName(currentOpenSubjects).map((group) => (
+                        <SubjectAccordionCard
+                          key={group.key}
+                          group={group}
+                          expanded={expandedSubjects.includes(group.key)}
+                          onToggle={() => toggleSubject(group.key)}
+                          cartIds={cartIds}
+                          onToggleCart={toggleCart}
+                        />
+                      ))
+                    ) : (
+                      <div className="rounded-[2rem] border border-dashed border-[#cfe0f1] bg-[#f8fbff] p-10 text-center">
+                        <p className="text-lg font-bold text-slate-700">이번 학기 개설 과목이 없습니다.</p>
+                        <p className="mt-2 text-sm font-medium text-slate-500">
+                          현재 필터 기준으로는 이번 학기 강의가 잡히지 않았습니다. 학과나 구분을 조금 넓혀보세요.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </section>
 
@@ -935,22 +929,37 @@ export function SearchPage() {
                   </div>
 
                   <div className="space-y-4">
-                    {sortByKoreanName(archivedSubjects).map((group) => (
-                      <SubjectAccordionCard
-                        key={group.key}
-                        group={group}
-                        expanded={expandedSubjects.includes(group.key)}
-                        onToggle={() => toggleSubject(group.key)}
-                        cartIds={cartIds}
-                        onToggleCart={toggleCart}
-                      />
-                    ))}
+                    {archivedSubjects.length > 0 ? (
+                      sortByKoreanName(archivedSubjects).map((group) => (
+                        <SubjectAccordionCard
+                          key={group.key}
+                          group={group}
+                          expanded={expandedSubjects.includes(group.key)}
+                          onToggle={() => toggleSubject(group.key)}
+                          cartIds={cartIds}
+                          onToggleCart={toggleCart}
+                        />
+                      ))
+                    ) : (
+                      <div className="rounded-[2rem] border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
+                        <p className="text-lg font-bold text-slate-600">현재 미개설 과목이 없습니다.</p>
+                        <p className="mt-2 text-sm font-medium text-slate-500">
+                          지금 보이는 결과는 대부분 이번 학기 개설 과목입니다.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </section>
 
                 {groupedSubjects.length === 0 && (
-                  <div className="rounded-[2rem] border border-[rgba(15,23,42,0.08)] bg-white p-12 text-center shadow-sm">
-                    <p className="text-lg font-bold text-slate-500">조건에 맞는 강의가 없습니다.</p>
+                  <div className="rounded-[2rem] border border-dashed border-[rgba(15,23,42,0.12)] bg-white p-12 text-center shadow-sm">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#f5f8fc] text-slate-400">
+                      <BookOpen className="h-6 w-6" />
+                    </div>
+                    <p className="mt-4 text-lg font-bold text-slate-700">조건에 맞는 강의가 없습니다.</p>
+                    <p className="mt-2 text-sm font-medium text-slate-500">
+                      학과, 이수 구분, 추천 테마를 조금 완화하면 더 많은 강의를 볼 수 있습니다.
+                    </p>
                   </div>
                 )}
               </div>
