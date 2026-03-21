@@ -14,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.inhaeval.backend.domain.PointHistory;
+import com.inhaeval.backend.repository.PointHistoryRepository;
 
 import java.util.UUID;
 import java.time.LocalDateTime;
@@ -22,6 +24,7 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class MemberService {
 
+    private final PointHistoryRepository pointHistoryRepository;
     private final MemberRepository memberRepository;
     private final EmailVerificationRepository emailVerificationRepository;
     private final PhoneVerificationRepository phoneVerificationRepository;
@@ -158,5 +161,99 @@ public class MemberService {
 
         member.updatePassword(passwordEncoder.encode(request.getNewPassword()));
         phoneVerificationRepository.deleteByPhoneNumber(request.getPhoneNumber());
+    }
+
+    // 1. 내 정보 조회
+    @Transactional(readOnly = true)
+    public UserResponse getMe(String email) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다."));
+        return UserResponse.from(member);
+    }
+
+    // 2. 닉네임 변경
+    @Transactional
+    public UserResponse updateNickname(String email, UpdateNicknameRequest request) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다."));
+        member.updateNickname(request.getNickname());
+        return UserResponse.from(member);
+    }
+
+    // 3. 학과 변경
+    @Transactional
+    public UserResponse updateDepartment(String email, UpdateDepartmentRequest request) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다."));
+        member.updateDepartment(request.getDepartment());
+        return UserResponse.from(member);
+    }
+
+    // 4. 비밀번호 변경 (로그인 상태에서)
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다."));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), member.getPassword())) {
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "현재 비밀번호가 일치하지 않습니다.");
+        }
+        if (passwordEncoder.matches(request.getNewPassword(), member.getPassword())) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "이전 비밀번호와 동일합니다.");
+        }
+
+        member.updatePassword(passwordEncoder.encode(request.getNewPassword()));
+    }
+
+    // 5. 전화번호 변경 (인증코드 확인 후)
+    @Transactional
+    public UserResponse changePhone(String email, ChangePhoneRequest request) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다."));
+
+        // 인증코드 확인 (기존 PhoneVerificationService 재활용)
+        phoneVerificationService.verifyCode(request.getPhoneNumber(), request.getVerificationCode());
+
+        if (memberRepository.existsByPhoneNumber(request.getPhoneNumber())) {
+            throw new CustomException(HttpStatus.CONFLICT, "이미 사용 중인 전화번호입니다.");
+        }
+
+        member.updatePhoneNumber(request.getPhoneNumber());
+        return UserResponse.from(member);
+    }
+
+    // 6. 열람권 구매 (-50P, PointHistory 기록)
+    @Transactional
+    public UserResponse purchasePass(String email) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다."));
+
+        if (member.getPoints() < 50) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "포인트가 부족합니다.");
+        }
+
+        member.deductPoints(50);
+        member.extendPass(30);
+
+        pointHistoryRepository.save(PointHistory.builder()
+                .member(member)
+                .description("열람권 구매")
+                .points(-50)
+                .build());
+
+        return UserResponse.from(member);
+    }
+
+    // 7. 회원탈퇴 (소프트 딜리트)
+    @Transactional
+    public void deleteAccount(String email, DeleteAccountRequest request) {
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "존재하지 않는 회원입니다."));
+
+        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+            throw new CustomException(HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다.");
+        }
+
+        member.deactivate();
     }
 }
