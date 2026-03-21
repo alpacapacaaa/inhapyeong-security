@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
-import { Star, Lock, Plus, FileText, CalendarClock, ShoppingBag, BookOpen } from 'lucide-react';
+import { Lock, Plus, FileText, CalendarClock, ShoppingBag, BookOpen } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
@@ -19,21 +19,8 @@ import { useCourseStats } from '../hooks/useCourseStats';
 import { CourseRadarChart } from '../components/course/CourseRadarChart';
 import { SyllabusModal } from '../components/course/SyllabusModal';
 import { CourseDetailSkeleton } from '../components/course/CourseSkeleton';
-
-const compareSemester = (a: string, b: string) => {
-  const [aYear, aTermRaw] = a.replace('학기', '').split('-');
-  const [bYear, bTermRaw] = b.replace('학기', '').split('-');
-  const aYearNumber = Number(aYear);
-  const bYearNumber = Number(bYear);
-  const aTerm = Number(aTermRaw);
-  const bTerm = Number(bTermRaw);
-
-  if (aYearNumber !== bYearNumber) {
-    return bYearNumber - aYearNumber;
-  }
-
-  return bTerm - aTerm;
-};
+import { compareSemesterLabel } from '../lib/semester';
+import { StarRating } from '../components/StarRating';
 
 export function CourseDetailPage() {
   const { id } = useParams();
@@ -46,14 +33,17 @@ export function CourseDetailPage() {
   const [selectedSemester, setSelectedSemester] = useState('전체');
   const [cartIds, setCartIds] = useState<string[]>([]);
 
-  const availableSemesters = ['전체', ...Array.from(new Set(reviews.map((review) => review.semester))).sort(compareSemester)];
+  const availableSemesters = ['전체', ...Array.from(new Set(reviews.map((review) => review.semester))).sort(compareSemesterLabel)];
   const filteredReviews = selectedSemester === '전체'
     ? reviews
     : reviews.filter((review) => review.semester === selectedSemester);
   const examReviews = filteredReviews.filter(
     (review) =>
-      !!review.examInfo ||
-      (review.examKeywords?.length ?? 0) > 0 ||
+      !!review.pastExamHelpfulness ||
+      !!review.scopePredictability ||
+      (review.studyResources?.length ?? 0) > 0 ||
+      (review.problemStyles?.length ?? 0) > 0 ||
+      !!review.examPrepTip ||
       (review.examTypes?.length ?? 0) > 0,
   );
 
@@ -183,19 +173,19 @@ export function CourseDetailPage() {
         <div className="page-shell py-8">
           <div className="space-y-6">
 
-            <div className="page-panel overflow-hidden p-6 lg:p-10">
-              <div className="grid gap-8 xl:grid-cols-[minmax(0,1.02fr)_430px] xl:gap-10">
-                <div className="flex flex-col border-b border-[rgba(15,23,42,0.08)] pb-8 xl:border-b-0 xl:border-r xl:border-[rgba(15,23,42,0.08)] xl:pr-10 xl:pb-0">
-                  <div className="mb-6">
+            <div className="page-panel overflow-hidden p-5 lg:p-8">
+              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.02fr)_410px] xl:gap-8">
+                <div className="flex flex-col border-b border-[rgba(15,23,42,0.08)] pb-6 xl:min-h-full xl:border-b-0 xl:border-r xl:border-[rgba(15,23,42,0.08)] xl:pr-8 xl:pb-0">
+                  <div className="mb-5">
                     <p className="section-kicker">강의 정보</p>
-                    <h1 className="mb-4 text-3xl font-black tracking-tight text-slate-900 md:text-5xl">
+                    <h1 className="mb-3 text-[1.95rem] font-black tracking-tight text-slate-900 md:text-[3.2rem]">
                       {course.name}
                     </h1>
                     <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-500">
-                      <span className={`rounded-full border px-3 py-1 text-xs font-extrabold ${isMajor ? 'border-[rgba(15,23,42,0.08)] bg-[#edf4ff] text-[#005bac]' : 'border-[rgba(15,23,42,0.08)] bg-[#f5f8fb] text-slate-700'}`}>
+                      <span className={`rounded-full border px-2.5 py-1 text-[11px] font-extrabold ${isMajor ? 'border-[rgba(15,23,42,0.08)] bg-[#edf4ff] text-[#005bac]' : 'border-[rgba(15,23,42,0.08)] bg-[#f5f8fb] text-slate-700'}`}>
                         {course.category}
                       </span>
-                      <span className="rounded-full border border-[rgba(15,23,42,0.08)] bg-[#f7fafc] px-3 py-1 text-slate-700">
+                      <span className="rounded-full border border-[rgba(15,23,42,0.08)] bg-[#f7fafc] px-2.5 py-1 text-[13px] text-slate-700">
                         {course.professor} 교수님
                       </span>
                       <span className="text-slate-300">|</span>
@@ -203,27 +193,28 @@ export function CourseDetailPage() {
                     </p>
                   </div>
 
-                  <div className="flex flex-col">
-                    <span className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">평균 평점</span>
-                    <div className="flex items-end gap-2">
-                      <span className="text-6xl font-black leading-none tracking-tighter text-slate-900">{overallRating.toFixed(1)}</span>
-                      <span className="text-xl text-slate-400 font-semibold mb-1.5">/ 5.0</span>
-                    </div>
-                    <div className="flex items-center mt-3">
-                      {Array.from({ length: 5 }, (_, i) => i < Math.round(overallRating)).map((filled, i) => (
-                        <Star
-                          key={i}
-                          className={`w-5 h-5 ${filled ? 'fill-[#005bac] text-[#005bac]' : 'text-slate-200 fill-slate-100'}`}
-                        />
-                      ))}
-                      <span className="ml-3 rounded-full border border-[rgba(15,23,42,0.08)] bg-[#f7fafc] px-3 py-1 text-xs font-semibold text-slate-500">
-                        {reviews.length} 리뷰
+                  <div className="mt-auto flex flex-col">
+                    <span className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-slate-400">평균 평점</span>
+                    <div className="flex items-end gap-2.5">
+                      <span className="text-[3.55rem] font-black leading-none tracking-tighter text-slate-900 md:text-[4rem]">
+                        {overallRating.toFixed(1)}
                       </span>
+                      <span className="mb-1 text-base font-semibold text-slate-400 md:text-[1.05rem]">/ 5.0</span>
+                    </div>
+                    <div className="mt-3">
+                      <StarRating
+                        value={overallRating}
+                        size="xl"
+                        showValue={false}
+                        reviewCount={reviews.length}
+                        className="items-center"
+                        reviewCountClassName="rounded-full border border-[rgba(15,23,42,0.08)] bg-[#f7fafc] px-3.5 py-1.5 text-sm font-semibold text-slate-500"
+                      />
                     </div>
                   </div>
 
-                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                    <Button asChild className="h-12 w-full rounded-full px-6 text-sm font-semibold">
+                  <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
+                    <Button asChild className="h-11 w-full rounded-full px-5 text-sm font-semibold">
                       <Link to={reviewWriteLink}>
                         <Plus className="w-4 h-4 mr-1.5" />
                         강의평 남기기
@@ -232,7 +223,7 @@ export function CourseDetailPage() {
                     <Button
                       onClick={() => setIsSyllabusOpen(true)}
                       variant="outline"
-                      className="h-12 w-full rounded-full px-6 text-sm font-bold text-slate-700"
+                      className="h-11 w-full rounded-full px-5 text-sm font-semibold text-slate-700"
                     >
                       <FileText className="w-4 h-4 mr-1.5 text-[#005bac]" />
                       강의계획서 보기
@@ -240,7 +231,7 @@ export function CourseDetailPage() {
                     <Button
                       onClick={handleToggleTimetableCart}
                       variant="outline"
-                      className="h-12 w-full rounded-full px-6 text-sm font-bold text-slate-700"
+                      className="h-11 w-full rounded-full px-5 text-sm font-semibold text-slate-700"
                     >
                       <ShoppingBag className="mr-1.5 h-4 w-4 text-[#005bac]" />
                       {isInTimetableCart ? '시간표 장바구니에서 빼기' : '시간표 장바구니 담기'}
@@ -248,7 +239,7 @@ export function CourseDetailPage() {
                     <Link to="/timetable" className="block w-full">
                       <Button
                         variant="outline"
-                        className="h-12 w-full rounded-full px-6 text-sm font-bold text-[#005bac]"
+                        className="h-11 w-full rounded-full px-5 text-sm font-semibold text-[#005bac]"
                       >
                         <CalendarClock className="mr-1.5 h-4 w-4" />
                         시간표 짜러 가기
@@ -256,28 +247,25 @@ export function CourseDetailPage() {
                     </Link>
                   </div>
 
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    <span className="outline-chip px-4 py-2 text-sm font-semibold">
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className="outline-chip px-3.5 py-1.5 text-[13px] font-semibold">
                       학기 {selectedSemester}
                     </span>
-                    <span className="outline-chip px-4 py-2 text-sm font-semibold">
+                    <span className="outline-chip px-3.5 py-1.5 text-[13px] font-semibold">
                       시험 정보 {examReviews.length}개
                     </span>
                   </div>
                 </div>
 
-                <div className="relative overflow-hidden rounded-[2rem] border border-[#dde5ef] bg-[linear-gradient(180deg,#fcfdff_0%,#f7f9fc_100%)] p-4 shadow-[0_14px_32px_rgba(15,23,42,0.05)] md:p-5">
-                  <div className="absolute inset-x-10 top-0 h-16 rounded-b-[1.3rem] bg-[linear-gradient(180deg,rgba(111,118,197,0.08),transparent)]" />
-                  <div className="mb-4 flex items-center justify-between">
+                <div className="self-end rounded-[1.6rem] border border-[#dde5ef] bg-white p-4 shadow-[0_10px_26px_rgba(15,23,42,0.04)] md:p-5">
+                  <div className="mb-4">
                     <div>
-                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#005bac]">강의 스탯</p>
-                      <p className="mt-1 text-sm font-medium text-slate-500">리뷰를 바탕으로 강의 성향을 한눈에 볼 수 있어요.</p>
+                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#005bac]">Signature Stat</p>
+                      <p className="mt-1 text-[1.05rem] font-black text-slate-950">강의 성향 요약</p>
                     </div>
-                    <span className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-slate-600 shadow-sm">
-                      리뷰 {filteredReviews.length}개
-                    </span>
                   </div>
-                  <div className="relative rounded-[1.6rem] border border-white/90 bg-white/82 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] backdrop-blur">
+
+                  <div className="rounded-[1.35rem] border border-[#e3eaf3] bg-[linear-gradient(180deg,#fafcff_0%,#f5f7fb_100%)] p-4">
                     <CourseRadarChart data={statsData} labels={statsLabels} />
                   </div>
                 </div>
@@ -322,16 +310,13 @@ export function CourseDetailPage() {
 
             {user.hasPass && (
               <div className="space-y-8 pt-6">
-                <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
-                  <div className="flex flex-col gap-4 rounded-[2rem] border border-[#005bac]/10 bg-white px-5 py-5 shadow-[0_12px_32px_rgba(0,91,172,0.05)] md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <h2 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
-                        <span className="inline-block h-6 w-1.5 rounded-full bg-[#1084e8]"></span>
+                <div className="space-y-5 animate-in slide-in-from-bottom-4 fade-in duration-500">
+                  <div className="flex flex-col gap-3 rounded-[1.55rem] border border-[#005bac]/10 bg-white px-5 py-4 shadow-[0_10px_24px_rgba(0,91,172,0.04)] md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center min-h-[44px]">
+                      <h2 className="flex items-center gap-2 text-[1.35rem] font-extrabold text-slate-900">
+                        <span className="inline-block h-5 w-1.5 rounded-full bg-[#1084e8]"></span>
                         {selectedSemester === '전체' ? '전체 강의평' : `${selectedSemester} 강의평`} <span className="text-[#005bac]">{finalReviews.length}</span>
                       </h2>
-                      {examReviews.length > 0 && (
-                        <p className="mt-2 text-sm font-medium text-amber-600">시험 정보 포함 리뷰 {examReviews.length}개</p>
-                      )}
                     </div>
 
                     <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
@@ -363,13 +348,25 @@ export function CourseDetailPage() {
                   </div>
 
                   <div className="space-y-4">
+                    {finalReviews.length > 0 && examReviews.length === 0 && (
+                      <div className="rounded-[1.25rem] border border-[rgba(15,23,42,0.08)] bg-[#f8fbff] px-4 py-3.5">
+                        <p className="text-sm font-bold text-slate-800">
+                          {selectedSemester === '전체'
+                            ? '아직 시험 정보가 포함된 리뷰는 없습니다.'
+                            : `${selectedSemester}에는 시험 정보가 포함된 리뷰가 아직 없습니다.`}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          기본 리뷰는 확인할 수 있고, 시험 방식이나 족보 정보는 다음 작성자가 채워줄 수 있습니다.
+                        </p>
+                      </div>
+                    )}
                     {finalReviews.map((review) => (
                       <ReviewCard key={review.id} review={review} />
                     ))}
                   </div>
 
                   {finalReviews.length === 0 && (
-                    <Card className="rounded-3xl border-dashed border-2 border-slate-200 bg-transparent">
+                    <Card className="rounded-[1.6rem] border-dashed border-2 border-slate-200 bg-transparent shadow-none">
                       <CardContent className="p-16 text-center">
                         <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
                           <BookOpen className="w-8 h-8 text-slate-300" />

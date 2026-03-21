@@ -1,4 +1,4 @@
-import { Course, Review, User, PointHistory, Inquiry, Notice } from '../types/types';
+import { Course, Review, User, PointHistory, Inquiry, Notice, CreateReviewInput } from '../types/types';
 import { mockCourses, mockReviews, mockUser, mockPointHistory, mockNotices, mockInquiries } from '../data/mockData';
 
 // Simulate API delay
@@ -213,7 +213,7 @@ export const reviewService = {
     return reviews.slice(0, 3);
   },
 
-  createReview: async (review: Omit<Review, 'id' | 'createdAt' | 'likes' | 'courseName' | 'professorName'>): Promise<Review> => {
+  createReview: async (review: CreateReviewInput): Promise<Review> => {
     await delay(500);
     const course = courses.find(c => c.id === review.courseId);
 

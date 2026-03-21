@@ -1,19 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { AlertTriangle, CalendarClock, Plus, Trash2, X } from 'lucide-react';
+import { Heart, Trash2 } from 'lucide-react';
 import { courseService } from '../api/api';
-import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
+import { StarRating } from '../components/StarRating';
 import { toast } from 'sonner';
 import {
-  loadSelectedTimetableIds,
+  loadActiveTimetablePlanKey,
   loadTimetableCartIds,
+  loadTimetablePlanSelections,
+  loadTimetablePlanThemeAssignments,
+  saveActiveTimetablePlanKey,
+  saveTimetablePlanSelections,
+  saveTimetablePlanThemeAssignments,
   saveSelectedTimetableIds,
   saveTimetableCartIds,
   TIMETABLE_BY_COURSE_ID,
   TIMETABLE_DAYS,
-  toggleStoredId,
+  TIMETABLE_CART_STORAGE_KEY,
+  TIMETABLE_PLAN_KEYS,
+  TIMETABLE_SEEDED_STORAGE_KEY,
+  TIMETABLE_SELECTED_STORAGE_KEY,
+  TIMETABLE_STARTER_CART_IDS,
+  TIMETABLE_STARTER_SELECTED_IDS,
+  TimetablePlanKey,
+  TimetablePlanSelections,
+  TimetablePlanThemeAssignments,
 } from '../data/timetableData';
 import { Course } from '../types/types';
 
@@ -21,36 +34,129 @@ type TimetableCourse = Course & {
   slots: typeof TIMETABLE_BY_COURSE_ID[string];
 };
 
-const BASE_VISIBLE_PERIODS = 9;
-const BASE_ROW_HEIGHT = 44;
-const BASE_ROW_GAP = 6;
-const COMPACT_ROW_GAP = 4;
+type BlockTheme = {
+  boardSurface: string;
+  badge: string;
+  outline: string;
+  preview: string;
+  text: string;
+  glow: string;
+};
+
+const BASE_VISIBLE_PERIODS = 14;
+const BASE_ROW_HEIGHT = 32;
+const BASE_ROW_GAP = 0;
+const COMPACT_ROW_GAP = 0;
 const TARGET_BOARD_HEIGHT =
   BASE_VISIBLE_PERIODS * BASE_ROW_HEIGHT + (BASE_VISIBLE_PERIODS - 1) * BASE_ROW_GAP;
 
-const BLOCK_STYLES = [
-  'from-[#dff1ff] to-[#eef7ff] border-[#b7daf7] text-[#005bac]',
-  'from-[#e7f8ef] to-[#f2fbf6] border-[#b8e5c9] text-[#177245]',
-  'from-[#fff0df] to-[#fff8ef] border-[#f4d0a6] text-[#b45b01]',
-  'from-[#efeaff] to-[#f7f2ff] border-[#d9cafb] text-[#6246d3]',
-  'from-[#ffe5ee] to-[#fff4f7] border-[#f4bfd1] text-[#b33b6a]',
+const BLOCK_THEMES: BlockTheme[] = [
+  {
+    boardSurface: '#f3f8fe',
+    badge: 'bg-[#eef6ff] text-[#316c9d]',
+    outline: '#afcde8',
+    preview: '#e7f1fc',
+    text: '#204863',
+    glow: 'rgba(159,197,230,0.08)',
+  },
+  {
+    boardSurface: '#f1faf6',
+    badge: 'bg-[#edf7f2] text-[#477566]',
+    outline: '#bfdccd',
+    preview: '#e5f3ec',
+    text: '#35584d',
+    glow: 'rgba(175,215,202,0.08)',
+  },
+  {
+    boardSurface: '#fbf6ee',
+    badge: 'bg-[#faf2e8] text-[#8a673f]',
+    outline: '#decbb2',
+    preview: '#f6ebdd',
+    text: '#724a25',
+    glow: 'rgba(223,186,150,0.08)',
+  },
+  {
+    boardSurface: '#f5f0fd',
+    badge: 'bg-[#f2ecfb] text-[#75639a]',
+    outline: '#d4c6e8',
+    preview: '#eee5fa',
+    text: '#5d4c7d',
+    glow: 'rgba(198,180,225,0.08)',
+  },
+  {
+    boardSurface: '#faf1f4',
+    badge: 'bg-[#faeef2] text-[#91616f]',
+    outline: '#e3c4ce',
+    preview: '#f5e4ea',
+    text: '#754d5a',
+    glow: 'rgba(223,188,200,0.08)',
+  },
+  {
+    boardSurface: '#f3f7fb',
+    badge: 'bg-[#eef4fa] text-[#4d708b]',
+    outline: '#bfd1e1',
+    preview: '#e5edf5',
+    text: '#385165',
+    glow: 'rgba(191,209,225,0.08)',
+  },
+  {
+    boardSurface: '#f5f8ef',
+    badge: 'bg-[#f2f6ea] text-[#6b7e4b]',
+    outline: '#d0dbbb',
+    preview: '#e8eedb',
+    text: '#53623a',
+    glow: 'rgba(208,219,187,0.08)',
+  },
+  {
+    boardSurface: '#f8f3ed',
+    badge: 'bg-[#f6eee5] text-[#8a6d4f]',
+    outline: '#dfccb8',
+    preview: '#efe2d4',
+    text: '#6a523b',
+    glow: 'rgba(223,204,184,0.08)',
+  },
+  {
+    boardSurface: '#f4f4fa',
+    badge: 'bg-[#efeff7] text-[#686b8e]',
+    outline: '#cbcce0',
+    preview: '#e5e6f2',
+    text: '#4e5070',
+    glow: 'rgba(203,204,224,0.08)',
+  },
+  {
+    boardSurface: '#f3f8f7',
+    badge: 'bg-[#edf6f4] text-[#4d7b72]',
+    outline: '#bdd8d2',
+    preview: '#e2f0ed',
+    text: '#3a5f58',
+    glow: 'rgba(189,216,210,0.08)',
+  },
 ];
 
-const getBlockStyle = (seed: string) => {
-  const code = seed.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return BLOCK_STYLES[code % BLOCK_STYLES.length];
+const formatSlotTime = (startPeriod: number, endPeriod: number) => {
+  const startHour = String(8 + startPeriod).padStart(2, '0');
+  const endHour = String(9 + endPeriod).padStart(2, '0');
+  return `${startHour}:00-${endHour}:00`;
 };
 
 export function TimetablePage() {
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [cartIds, setCartIds] = useState<string[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [activePlanKey, setActivePlanKey] = useState<TimetablePlanKey>('A');
+  const [planSelections, setPlanSelections] = useState<TimetablePlanSelections>({
+    A: [],
+    B: [],
+    C: [],
+  });
+  const [planThemeAssignments, setPlanThemeAssignments] = useState<TimetablePlanThemeAssignments>({
+    A: {},
+    B: {},
+    C: {},
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [draggedCourseId, setDraggedCourseId] = useState<string | null>(null);
-  const [dragSource, setDragSource] = useState<'cart' | 'board' | null>(null);
   const [isBoardDragging, setIsBoardDragging] = useState(false);
   const [isBoardRejected, setIsBoardRejected] = useState(false);
-  const [isWaitingDrop, setIsWaitingDrop] = useState(false);
   const [recentlyPlacedCourseId, setRecentlyPlacedCourseId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -65,10 +171,100 @@ export function TimetablePage() {
       }
     };
 
-    setCartIds(loadTimetableCartIds());
-    setSelectedIds(loadSelectedTimetableIds());
+    if (typeof window !== 'undefined') {
+      const storedCartIds = loadTimetableCartIds();
+      const storedPlanSelections = loadTimetablePlanSelections();
+      const storedThemeAssignments = loadTimetablePlanThemeAssignments();
+      const storedActivePlanKey = loadActiveTimetablePlanKey();
+
+      const needsSeed =
+        !window.localStorage.getItem(TIMETABLE_SEEDED_STORAGE_KEY) ||
+        storedCartIds.length < Math.min(8, TIMETABLE_STARTER_CART_IDS.length) ||
+        storedPlanSelections.A.length < Math.min(4, TIMETABLE_STARTER_SELECTED_IDS.length);
+
+      if (needsSeed) {
+        const seededPlanSelections: TimetablePlanSelections = {
+          A: TIMETABLE_STARTER_SELECTED_IDS,
+          B: [],
+          C: [],
+        };
+        window.localStorage.setItem(TIMETABLE_CART_STORAGE_KEY, JSON.stringify(TIMETABLE_STARTER_CART_IDS));
+        window.localStorage.setItem(TIMETABLE_SELECTED_STORAGE_KEY, JSON.stringify(TIMETABLE_STARTER_SELECTED_IDS));
+        window.localStorage.setItem(TIMETABLE_SEEDED_STORAGE_KEY, 'true');
+        saveTimetablePlanSelections(seededPlanSelections);
+        saveTimetablePlanThemeAssignments({ A: {}, B: {}, C: {} });
+        saveActiveTimetablePlanKey('A');
+        setCartIds(TIMETABLE_STARTER_CART_IDS);
+        setPlanSelections(seededPlanSelections);
+        setPlanThemeAssignments({ A: {}, B: {}, C: {} });
+        setActivePlanKey('A');
+      } else {
+        setCartIds(storedCartIds);
+        setPlanSelections(storedPlanSelections);
+        setPlanThemeAssignments(storedThemeAssignments);
+        setActivePlanKey(storedActivePlanKey);
+      }
+    }
     fetchCourses();
   }, []);
+
+  const selectedIds = planSelections[activePlanKey];
+  const assignedThemeIndices = planThemeAssignments[activePlanKey];
+
+  useEffect(() => {
+    setPlanThemeAssignments((previousAssignments) => {
+      const currentAssignments = previousAssignments[activePlanKey] ?? {};
+      const nextAssignments: Record<string, number> = {};
+      const usedIndices = new Set<number>();
+
+      selectedIds.forEach((courseId) => {
+        const assignedIndex = currentAssignments[courseId];
+
+        if (assignedIndex === undefined || usedIndices.has(assignedIndex)) {
+          return;
+        }
+
+        nextAssignments[courseId] = assignedIndex;
+        usedIndices.add(assignedIndex);
+      });
+
+      selectedIds.forEach((courseId) => {
+        if (nextAssignments[courseId] !== undefined) {
+          return;
+        }
+
+        const availableIndices = BLOCK_THEMES.map((_, index) => index).filter(
+          (index) => !usedIndices.has(index),
+        );
+
+        const candidateIndices =
+          availableIndices.length > 0
+            ? availableIndices
+            : BLOCK_THEMES.map((_, index) => index);
+
+        const nextUnusedIndex =
+          candidateIndices[Math.floor(Math.random() * candidateIndices.length)];
+
+        nextAssignments[courseId] = nextUnusedIndex;
+        usedIndices.add(nextUnusedIndex);
+      });
+
+      const sameShape =
+        Object.keys(currentAssignments).length === Object.keys(nextAssignments).length &&
+        Object.entries(nextAssignments).every(([courseId, index]) => currentAssignments[courseId] === index);
+
+      if (sameShape) {
+        return previousAssignments;
+      }
+
+      const nextPlanAssignments = {
+        ...previousAssignments,
+        [activePlanKey]: nextAssignments,
+      };
+      saveTimetablePlanThemeAssignments(nextPlanAssignments);
+      return nextPlanAssignments;
+    });
+  }, [activePlanKey, selectedIds]);
 
   const cartCourses = useMemo<TimetableCourse[]>(
     () =>
@@ -78,8 +274,28 @@ export function TimetablePage() {
           ...course,
           slots: TIMETABLE_BY_COURSE_ID[course.id] ?? [],
         }))
-        .sort((a, b) => a.name.localeCompare(b.name, 'ko')),
-    [allCourses, cartIds],
+        .sort((a, b) => {
+          const aPlaced = selectedIds.includes(a.id);
+          const bPlaced = selectedIds.includes(b.id);
+
+          if (aPlaced !== bPlaced) {
+            return aPlaced ? -1 : 1;
+          }
+
+          const aMajor = a.category === '전공';
+          const bMajor = b.category === '전공';
+
+          if (aMajor !== bMajor) {
+            return aMajor ? -1 : 1;
+          }
+
+          if (b.rating !== a.rating) {
+            return b.rating - a.rating;
+          }
+
+          return a.name.localeCompare(b.name, 'ko');
+        }),
+    [allCourses, cartIds, selectedIds],
   );
 
   const placedCourses = useMemo(
@@ -141,6 +357,38 @@ export function TimetablePage() {
   const draggedCourse = useMemo(
     () => cartCourses.find((course) => course.id === draggedCourseId) ?? null,
     [cartCourses, draggedCourseId],
+  );
+
+  const nextUnusedThemeIndex = useMemo(() => {
+    const usedIndices = new Set(Object.values(assignedThemeIndices));
+    const nextFreeIndex = BLOCK_THEMES.findIndex((_, index) => !usedIndices.has(index));
+
+    return nextFreeIndex === -1 ? 0 : nextFreeIndex;
+  }, [assignedThemeIndices]);
+
+  const previewTheme = useMemo(() => {
+    if (!draggedCourseId) {
+      return null;
+    }
+
+    const assignedIndex = assignedThemeIndices[draggedCourseId];
+    return BLOCK_THEMES[assignedIndex ?? nextUnusedThemeIndex];
+  }, [assignedThemeIndices, draggedCourseId, nextUnusedThemeIndex]);
+
+  const planSummaries = useMemo(
+    () =>
+      TIMETABLE_PLAN_KEYS.map((planKey) => {
+        const planIds = planSelections[planKey];
+        const courses = allCourses.filter((course) => planIds.includes(course.id));
+        const totalCredits = courses.reduce((sum, course) => sum + (course.credits ?? 3), 0);
+
+        return {
+          planKey,
+          count: planIds.length,
+          credits: totalCredits,
+        };
+      }),
+    [allCourses, planSelections],
   );
 
   const previewEntries = useMemo(
@@ -209,37 +457,86 @@ export function TimetablePage() {
     top: getRowTop(startPeriod),
     height:
       (endPeriod - startPeriod + 1) * rowHeight +
-      (endPeriod - startPeriod) * rowGap,
+      (endPeriod - startPeriod) * rowGap +
+      1,
   });
 
+  const hasPlacementConflict = (courseId: string, baseSelectedIds = selectedIds) => {
+    const nextSlots = TIMETABLE_BY_COURSE_ID[courseId] ?? [];
+    const compareIds = baseSelectedIds.filter((id) => id !== courseId);
+
+    return compareIds.some((selectedId) =>
+      (TIMETABLE_BY_COURSE_ID[selectedId] ?? []).some(
+        (placed) =>
+          nextSlots.some(
+            (slot) =>
+              placed.day === slot.day &&
+              slot.startPeriod <= placed.endPeriod &&
+              placed.startPeriod <= slot.endPeriod,
+          ),
+      ),
+    );
+  };
+
+  const conflictingCourseIds = useMemo(
+    () =>
+      new Set(
+        cartCourses
+          .filter((course) => !selectedIds.includes(course.id) && hasPlacementConflict(course.id))
+          .map((course) => course.id),
+      ),
+    [cartCourses, selectedIds],
+  );
+
+  const updateActivePlanSelections = (nextIds: string[]) => {
+    const nextPlanSelections = {
+      ...planSelections,
+      [activePlanKey]: nextIds,
+    };
+    setPlanSelections(nextPlanSelections);
+    saveTimetablePlanSelections(nextPlanSelections);
+    saveSelectedTimetableIds(nextPlanSelections.A);
+  };
+
+  const placeCourse = (courseId: string) => {
+    if (selectedIds.includes(courseId)) {
+      return true;
+    }
+
+    if (hasPlacementConflict(courseId)) {
+      toast.error('겹치는 강의가 있어서 이 블록은 놓을 수 없어요.');
+      return false;
+    }
+
+    const next = [...selectedIds, courseId];
+    updateActivePlanSelections(next);
+    return true;
+  };
+
   const handlePlaceCourse = (courseId: string) => {
-    const next = toggleStoredId(selectedIds, courseId);
-    setSelectedIds(next);
-    saveSelectedTimetableIds(next);
+    const placed = placeCourse(courseId);
+    if (placed) {
+      toast.success('강의를 시간표에 담았어요.');
+    }
   };
 
   const handleDragStart = (
     event: React.DragEvent<HTMLDivElement>,
     courseId: string,
-    source: 'cart' | 'board',
   ) => {
     event.dataTransfer.setData('text/plain', courseId);
     event.dataTransfer.effectAllowed = 'move';
     setDraggedCourseId(courseId);
-    setDragSource(source);
   };
 
   const handleDragEnd = () => {
     setDraggedCourseId(null);
-    setDragSource(null);
     setIsBoardDragging(false);
-    setIsWaitingDrop(false);
   };
 
   const handleUnplaceCourse = (courseId: string) => {
     const next = selectedIds.filter((id) => id !== courseId);
-    setSelectedIds(next);
-    saveSelectedTimetableIds(next);
+    updateActivePlanSelections(next);
   };
 
   const handleBoardDrop = () => {
@@ -247,7 +544,7 @@ export function TimetablePage() {
       return;
     }
 
-    if (previewConflicts) {
+    if (hasPlacementConflict(draggedCourseId)) {
       setIsBoardRejected(true);
       setIsBoardDragging(false);
       setTimeout(() => setIsBoardRejected(false), 450);
@@ -256,373 +553,481 @@ export function TimetablePage() {
     }
 
     if (!selectedIds.includes(draggedCourseId)) {
-      const next = [...selectedIds, draggedCourseId];
-      setSelectedIds(next);
-      saveSelectedTimetableIds(next);
+      const placed = placeCourse(draggedCourseId);
+      if (!placed) {
+        setIsBoardRejected(true);
+        setIsBoardDragging(false);
+        setTimeout(() => setIsBoardRejected(false), 450);
+        return;
+      }
       toast.success('시간표 보드에 블록을 올렸어요.');
       setRecentlyPlacedCourseId(draggedCourseId);
       setTimeout(() => setRecentlyPlacedCourseId(null), 420);
     }
 
     setDraggedCourseId(null);
-    setDragSource(null);
     setIsBoardDragging(false);
-  };
-
-  const handleWaitingDrop = () => {
-    if (!draggedCourseId || dragSource !== 'board') {
-      setIsWaitingDrop(false);
-      return;
-    }
-
-    handleUnplaceCourse(draggedCourseId);
-    setDraggedCourseId(null);
-    setDragSource(null);
-    setIsWaitingDrop(false);
-    toast.success('강의를 대기 영역으로 되돌렸어요.');
   };
 
   const handleRemoveFromCart = (courseId: string) => {
     const nextCartIds = cartIds.filter((id) => id !== courseId);
-    const nextSelectedIds = selectedIds.filter((id) => id !== courseId);
+    const nextPlanSelections = TIMETABLE_PLAN_KEYS.reduce(
+      (acc, planKey) => ({
+        ...acc,
+        [planKey]: planSelections[planKey].filter((id) => id !== courseId),
+      }),
+      {} as TimetablePlanSelections,
+    );
+    const nextPlanThemeAssignments = TIMETABLE_PLAN_KEYS.reduce(
+      (acc, planKey) => {
+        const { [courseId]: _removed, ...restAssignments } = planThemeAssignments[planKey];
+        return {
+          ...acc,
+          [planKey]: restAssignments,
+        };
+      },
+      {} as TimetablePlanThemeAssignments,
+    );
+
     setCartIds(nextCartIds);
-    setSelectedIds(nextSelectedIds);
+    setPlanSelections(nextPlanSelections);
+    setPlanThemeAssignments(nextPlanThemeAssignments);
     saveTimetableCartIds(nextCartIds);
-    saveSelectedTimetableIds(nextSelectedIds);
+    saveTimetablePlanSelections(nextPlanSelections);
+    saveTimetablePlanThemeAssignments(nextPlanThemeAssignments);
+    saveSelectedTimetableIds(nextPlanSelections.A);
   };
 
   const handlePlaceAll = () => {
-    const nextSelectedIds = cartCourses.map((course) => course.id);
-    setSelectedIds(nextSelectedIds);
-    saveSelectedTimetableIds(nextSelectedIds);
+    const nextSelectedIds = [...selectedIds];
+    let placedCount = 0;
+    let skippedCount = 0;
+
+    cartCourses.forEach((course) => {
+      if (nextSelectedIds.includes(course.id)) {
+        return;
+      }
+
+      if (hasPlacementConflict(course.id, nextSelectedIds)) {
+        skippedCount += 1;
+        return;
+      }
+
+      nextSelectedIds.push(course.id);
+      placedCount += 1;
+    });
+
+    updateActivePlanSelections(nextSelectedIds);
+
+    if (placedCount > 0 && skippedCount > 0) {
+      toast.success(`겹치지 않는 ${placedCount}개 강의만 먼저 담았어요. ${skippedCount}개는 충돌로 제외됐습니다.`);
+      return;
+    }
+
+    if (placedCount > 0) {
+      toast.success(`${placedCount}개 강의를 한 번에 시간표에 담았어요.`);
+      return;
+    }
+
+    if (skippedCount > 0) {
+      toast.error('겹치지 않게 넣을 수 있는 강의가 없어 전체 배치를 건너뛰었습니다.');
+    }
   };
 
   const handleClearPlaced = () => {
-    setSelectedIds([]);
-    saveSelectedTimetableIds([]);
+    updateActivePlanSelections([]);
+  };
+
+  const handleSwitchPlan = (planKey: TimetablePlanKey) => {
+    setActivePlanKey(planKey);
+    saveActiveTimetablePlanKey(planKey);
+    setDraggedCourseId(null);
+    setIsBoardDragging(false);
+    setIsBoardRejected(false);
   };
 
   return (
     <div className="min-h-screen">
-      <div className="page-shell flex flex-col gap-4 py-6 xl:h-[calc(100vh-92px)]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#005bac]">시간표</p>
-            <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950">블록 시간표</h1>
-          </div>
+      <div className="page-shell flex min-h-[calc(100vh-92px)] flex-col gap-4 py-5">
+        <section className="rounded-[1.5rem] border border-[#dbe4ee] bg-white px-5 py-4 shadow-[0_14px_28px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#005bac]">Timetable Planner</p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">강의 고르기와 시간표 조립을 한 화면에서</h1>
+              <p className="mt-1 text-sm text-slate-500">찜한 강의를 보면서 바로 이번 주 시간표에 담아볼 수 있습니다.</p>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {planSummaries.map((plan) => {
+                  const isActive = activePlanKey === plan.planKey;
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-slate-600 shadow-sm">
-              장바구니 {cartCourses.length}
-            </Badge>
-            <Badge className="rounded-full bg-[#edf4ff] px-3 py-1.5 text-xs font-black text-[#005bac]">
-              배치 {placedCourses.length}
-            </Badge>
-            <Badge className={`rounded-full px-3 py-1.5 text-xs font-black ${conflicts.length > 0 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
-              {conflicts.length > 0 ? `충돌 ${conflicts.length}` : `학점 ${totalCredits}`}
-            </Badge>
-            <Link to="/search">
-              <Button variant="outline" className="rounded-full px-4 font-bold">
-                강의 담기
-              </Button>
-            </Link>
-            <Button onClick={handlePlaceAll} className="rounded-full px-4 font-bold text-white">
-              전체 배치
-            </Button>
-            <Button variant="ghost" onClick={handleClearPlaced} className="rounded-full px-4 font-bold text-slate-500">
-              초기화
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid flex-1 gap-5 xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <Card
-            className={`overflow-hidden rounded-[2.25rem] border bg-white shadow-[0_18px_44px_rgba(15,23,42,0.08)] transition-all ${
-              isBoardRejected
-                ? 'border-rose-300 bg-rose-50/60 ring-2 ring-rose-200'
-                : isBoardDragging
-                  ? previewConflicts
-                    ? 'border-rose-300 bg-rose-50/50'
-                    : 'border-[#005bac]/22 bg-[#f8fbfd]'
-                  : 'border-[rgba(15,23,42,0.08)]'
-            }`}
-            onDragOver={(event) => {
-              event.preventDefault();
-              if (draggedCourseId) {
-                setIsBoardDragging(true);
-              }
-            }}
-            onDragLeave={(event) => {
-              const nextTarget = event.relatedTarget as Node | null;
-              if (!event.currentTarget.contains(nextTarget)) {
-                setIsBoardDragging(false);
-              }
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              handleBoardDrop();
-            }}
-          >
-            <CardContent className="flex h-full min-h-[760px] flex-col p-5 xl:min-h-0">
-              <div className="mb-4 flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#005bac]">주간 시간표</p>
-                  <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">드래그해서 시간표에 배치하기</h2>
-                  {draggedCourse && (
-                    <p className={`mt-2 text-sm font-bold ${previewConflicts ? 'text-rose-600' : 'text-[#1084e8]'}`}>
-                      {previewConflicts ? `${draggedCourse.name} 시간 충돌` : `${draggedCourse.name} 배치 가능`}
-                    </p>
-                  )}
-                </div>
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#edf4ff] text-[#005bac]">
-                  <CalendarClock className="h-5 w-5" />
-                </div>
-              </div>
-
-              <div className="min-h-0 overflow-x-auto xl:overflow-hidden">
-                <div className="grid min-w-[980px] grid-cols-[96px_repeat(5,minmax(0,1fr))] gap-3 xl:min-w-0">
-                  <div />
-                  {TIMETABLE_DAYS.map((day) => (
-                    <div
-                      key={day}
-                      className="flex h-14 items-center justify-center rounded-full border border-[rgba(15,23,42,0.08)] bg-[#f5f8fc] text-2xl font-black text-slate-700"
+                  return (
+                    <button
+                      key={plan.planKey}
+                      type="button"
+                      onClick={() => handleSwitchPlan(plan.planKey)}
+                      className={`rounded-[1rem] border px-3 py-2 text-left transition-colors ${
+                        isActive
+                          ? 'border-[#9fc5e6] bg-[#eff7ff]'
+                          : 'border-[#dbe4ee] bg-white hover:bg-slate-50'
+                      }`}
                     >
-                      {day}
-                    </div>
-                  ))}
+                      <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${isActive ? 'text-[#316c9d]' : 'text-slate-400'}`}>
+                        Plan {plan.planKey}
+                      </p>
+                      <p className={`mt-1 text-sm font-black ${isActive ? 'text-slate-950' : 'text-slate-700'}`}>
+                        {plan.count}과목 · {plan.credits}학점
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-                  <div className="relative" style={{ height: boardHeight }}>
-                    {displayedPeriods.map((period) => (
-                      <div
-                        key={`label-${period.period}`}
-                        className="absolute left-0 right-0 flex flex-col items-center justify-center rounded-[1.35rem] border border-[rgba(15,23,42,0.08)] bg-white/88 text-center shadow-sm"
-                        style={{ top: getRowTop(period.period) }}
-                      >
-                        <div
-                          className="flex w-full flex-col items-center justify-center"
-                          style={{ height: rowHeight }}
+            <div className="flex flex-col gap-3 xl:min-w-[520px] xl:max-w-[560px] xl:items-end">
+              <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                <Link to="/search">
+                  <Button variant="outline" className="h-10 rounded-full px-4 font-bold">
+                    강의 더 담기
+                  </Button>
+                </Link>
+                <Button onClick={handlePlaceAll} disabled={cartCourses.length === 0} className="h-10 rounded-full px-4 font-bold text-white">
+                  겹치지 않는 강의 담기
+                </Button>
+                <Button variant="ghost" onClick={handleClearPlaced} disabled={placedCourses.length === 0} className="h-10 rounded-full px-4 font-bold text-slate-500">
+                  시간표 비우기
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <section className="rounded-[1.5rem] border border-[#dbe4ee] bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.04)] xl:sticky xl:top-24 xl:self-start">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#005bac]">Browse</p>
+                <h2 className="mt-1 text-2xl font-black text-slate-950">찜한 강의</h2>
+              </div>
+              <div className="flex items-center gap-2 rounded-full bg-[#f5f8fc] px-3 py-1.5">
+                <Heart className="h-4 w-4 text-[#6f8fb0]" />
+                <span className="text-xs font-black text-[#4c6f96]">{cartCourses.length}개</span>
+              </div>
+            </div>
+
+            {isLoading ? (
+              <div className="rounded-[1.4rem] border border-dashed border-slate-200 bg-slate-50 p-10 text-center text-slate-400">
+                불러오는 중
+              </div>
+            ) : cartCourses.length === 0 ? (
+              <div className="rounded-[1.4rem] border border-dashed border-slate-200 bg-slate-50 p-10 text-center">
+                <p className="font-bold text-slate-600">아직 찜한 강의가 없습니다.</p>
+                <p className="mt-2 text-sm text-slate-500">강의 둘러보기에서 마음에 드는 강의를 담아오면 여기에서 바로 비교할 수 있어요.</p>
+              </div>
+            ) : (
+              <div className="space-y-2.5 xl:max-h-[calc(100vh-250px)] xl:overflow-y-auto xl:pr-1">
+                {cartCourses.map((course) => {
+                  const blockTheme = BLOCK_THEMES[assignedThemeIndices[course.id] ?? 0];
+                  const isPlaced = selectedIds.includes(course.id);
+                  const hasConflict = conflictingCourseIds.has(course.id);
+                  const listAccent = isPlaced ? blockTheme.outline : '#d8dee8';
+                  const slotClassName = isPlaced
+                    ? blockTheme.badge
+                      : hasConflict
+                      ? 'bg-[#fbefef] text-[#b55a67]'
+                      : 'bg-[#f3f5f8] text-slate-500';
+
+                  return (
+                    <article
+                      key={course.id}
+                      draggable
+                      onDragStart={(event) => handleDragStart(event, course.id)}
+                      onDragEnd={handleDragEnd}
+                      onClick={() => {
+                        if (!isPlaced) {
+                          handlePlaceCourse(course.id);
+                        }
+                      }}
+                      className={`grid grid-cols-[8px_minmax(0,1fr)_auto] items-center gap-3 rounded-[1rem] border px-3 py-3 transition-all hover:border-[#c7d8ea] ${
+                        draggedCourseId === course.id
+                          ? 'scale-[1.01] border-[#97bbdf] shadow-[0_18px_28px_rgba(15,23,42,0.08)]'
+                          : 'border-[#dbe4ee]'
+                      } ${
+                        isPlaced
+                          ? 'bg-white cursor-grab'
+                          : hasConflict
+                            ? 'bg-[#faf5f5] cursor-pointer border-[#ead6d9]'
+                            : 'bg-[#f5f7fa] cursor-pointer'
+                      }`}
+                      style={
+                        isPlaced
+                          ? {
+                              backgroundColor: blockTheme.boardSurface,
+                              boxShadow: `0 10px 20px -18px ${blockTheme.glow}`,
+                            }
+                          : undefined
+                      }
+                    >
+                      <span
+                        className="h-full min-h-14 rounded-full"
+                        style={{ backgroundColor: listAccent }}
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                            {course.category} · {course.credits ?? 3}학점
+                          </span>
+                          {hasConflict ? (
+                            <span className="rounded-full bg-[#fbefef] px-2 py-1 text-[10px] font-black text-[#b55a67]">
+                              시간 겹침
+                            </span>
+                          ) : null}
+                        </div>
+                        <p
+                          className={`mt-2 line-clamp-1 text-[15px] font-black tracking-tight ${
+                            isPlaced ? 'text-slate-950' : 'text-slate-500'
+                          }`}
                         >
-                          <p className="text-[11px] font-semibold tracking-tight text-slate-400">{period.label}</p>
-                          <p className="text-base font-extrabold tracking-tight text-slate-700">{period.time}</p>
+                          {course.name}
+                        </p>
+                        <div className={`mt-1 flex items-center gap-2 text-xs ${isPlaced ? 'text-slate-500' : 'text-slate-400'}`}>
+                          <span className="line-clamp-1 font-semibold">{course.professor}</span>
+                          <StarRating
+                            value={course.rating}
+                            size="sm"
+                            showValue={false}
+                            starClassName="h-3 w-3"
+                            filledStarClassName={isPlaced ? 'fill-[#f2b94b] text-[#f2b94b]' : 'fill-[#cfd6df] text-[#cfd6df]'}
+                            emptyStarClassName={isPlaced ? 'fill-[#f5efe1] text-[#eadfc7]' : 'fill-[#edf1f5] text-[#edf1f5]'}
+                          />
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {course.slots.map((slot) => (
+                            <span
+                              key={`${course.id}-${slot.day}-${slot.startPeriod}`}
+                              className={`rounded-full px-2 py-1 text-[10px] font-bold ${slotClassName}`}
+                            >
+                              {slot.day} {formatSlotTime(slot.startPeriod, slot.endPeriod)}
+                            </span>
+                          ))}
                         </div>
                       </div>
-                    ))}
-                  </div>
-
-                  {dayColumns.map((column) => (
-                    <div
-                      key={column.day}
-                      className="relative overflow-hidden rounded-[2rem] border border-[rgba(15,23,42,0.08)] bg-[linear-gradient(180deg,#fbfdff_0%,#f6f9fe_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]"
-                      style={{ height: boardHeight }}
-                    >
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,132,232,0.07),transparent_55%)]" />
-
-                      {displayedPeriods.slice(0, -1).map((period) => (
-                        <div
-                          key={`${column.day}-line-${period.period}`}
-                          className="absolute left-0 right-0 h-px bg-[#dde6f2]"
-                          style={{ top: getRowTop(period.period) + rowHeight + rowGap / 2 }}
-                        />
-                      ))}
-
-                      {draggedCourse &&
-                        previewEntries
-                          .filter((entry) => entry.day === column.day)
-                          .map((entry) => {
-                            const frame = getEntryFrame(entry.startPeriod, entry.endPeriod);
-
-                            return (
-                              <div
-                                key={`preview-${entry.courseId}-${entry.day}-${entry.startPeriod}`}
-                                className={`pointer-events-none absolute left-0 right-0 rounded-none border-2 border-dashed px-3 py-3 ${
-                                  previewConflicts
-                                    ? 'border-rose-300 bg-rose-100/70'
-                                    : 'border-[#1084e8] bg-[#dff1ff]/75'
-                                }`}
-                                style={frame}
-                              >
-                                <p className={`line-clamp-2 text-sm font-black ${previewConflicts ? 'text-rose-600' : 'text-[#005bac]'}`}>
-                                  {entry.courseName}
-                                </p>
-                              </div>
-                            );
-                          })}
-
-                      {column.entries.map((entry) => {
-                        const frame = getEntryFrame(entry.startPeriod, entry.endPeriod);
-
-                        return (
-                          <div
-                            key={`${entry.courseId}-${entry.day}-${entry.startPeriod}`}
-                            draggable
-                            onDragStart={(event) => handleDragStart(event, entry.courseId, 'board')}
-                            onDragEnd={handleDragEnd}
-                            className={`absolute left-0 right-0 cursor-grab rounded-none border bg-gradient-to-br px-3 py-3 shadow-[0_10px_18px_rgba(15,23,42,0.08)] transition-transform active:cursor-grabbing ${getBlockStyle(entry.courseId)} ${
-                              recentlyPlacedCourseId === entry.courseId ? 'scale-[1.02] animate-[pulse_350ms_ease-out_1]' : ''
-                            }`}
-                            style={frame}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (isPlaced) {
+                              handleUnplaceCourse(course.id);
+                            } else {
+                              handlePlaceCourse(course.id);
+                            }
+                          }}
+                          className={`inline-flex h-9 items-center justify-center rounded-full border px-3 text-xs font-black transition-colors ${
+                            isPlaced ? 'hover:brightness-[0.98]' : 'border-[#d7dee7] bg-white text-slate-500 hover:bg-slate-50'
+                          }`}
+                          style={
+                            isPlaced
+                              ? {
+                                  borderColor: blockTheme.outline,
+                                  backgroundColor: blockTheme.boardSurface,
+                                  color: blockTheme.text,
+                                }
+                              : undefined
+                          }
+                        >
+                          {isPlaced ? '빼기' : '담기'}
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleRemoveFromCart(course.id);
+                            }}
+                            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#d6e2ef] bg-white text-slate-500 transition-colors hover:bg-slate-50"
                           >
-                            <div className="flex h-full flex-col justify-between">
-                              <div>
-                                <p className="line-clamp-2 text-[15px] font-black leading-tight">{entry.courseName}</p>
-                                <p className="mt-1 line-clamp-1 text-xs font-semibold opacity-75">{entry.professor}</p>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-[11px] font-black opacity-80">
-                                  {displayedPeriods[entry.startPeriod - 1]?.time} - {displayedPeriods[entry.endPeriod]?.time ?? `${String(9 + entry.endPeriod).padStart(2, '0')}:00`}
-                                </p>
-                                <p className="line-clamp-1 text-[11px] font-medium opacity-75">{entry.location}</p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </section>
 
-          <div className="space-y-4 xl:min-h-0">
+          <div className="space-y-4">
             <Card
-              className={`rounded-[2rem] border bg-white shadow-[0_16px_40px_rgba(15,23,42,0.06)] transition-all ${
-                isWaitingDrop
-                  ? 'border-[#005bac]/30 bg-[#f8fbfd] ring-2 ring-[#005bac]/10'
-                  : 'border-[rgba(15,23,42,0.08)]'
+              className={`overflow-hidden rounded-[1.45rem] border bg-white shadow-[0_14px_32px_rgba(15,23,42,0.04)] transition-all ${
+                isBoardRejected
+                  ? 'border-rose-300 ring-1 ring-rose-200'
+                  : isBoardDragging
+                    ? previewConflicts
+                      ? 'border-rose-300'
+                      : 'border-[#97bbdf]'
+                    : 'border-[#dbe4ee]'
               }`}
               onDragOver={(event) => {
-                if (dragSource === 'board') {
-                  event.preventDefault();
-                  setIsWaitingDrop(true);
+                event.preventDefault();
+                if (draggedCourseId) {
+                  setIsBoardDragging(true);
                 }
               }}
               onDragLeave={(event) => {
                 const nextTarget = event.relatedTarget as Node | null;
                 if (!event.currentTarget.contains(nextTarget)) {
-                  setIsWaitingDrop(false);
+                  setIsBoardDragging(false);
                 }
               }}
               onDrop={(event) => {
                 event.preventDefault();
-                handleWaitingDrop();
+                handleBoardDrop();
               }}
             >
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
+              <CardContent className="flex flex-1 flex-col p-4 md:p-5">
+                <div className="mb-5 flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#005bac]">대기 구역</p>
-                    <h3 className="mt-1 text-xl font-black text-slate-950">대기 구역</h3>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#5e88b8]">Weekly Planner</p>
+                    <h2 className="mt-1 text-[28px] font-black tracking-[-0.04em] text-slate-950">이번 주 시간표</h2>
+                    {draggedCourse ? (
+                      <p className={`mt-2 text-sm font-semibold ${previewConflicts ? 'text-rose-500' : 'text-slate-500'}`}>
+                        {previewConflicts ? `${draggedCourse.name}은 겹쳐서 담을 수 없어요` : `${draggedCourse.name}을 시간표에 넣을 수 있어요`}
+                      </p>
+                    ) : placedCourses.length === 0 ? (
+                      <p className="mt-2 text-sm font-medium text-slate-500">왼쪽에서 고른 강의를 바로 시간표에 담아보세요.</p>
+                    ) : (
+                      <p className="mt-2 text-sm font-medium text-slate-500">담아둔 강의를 주간 흐름으로 바로 확인할 수 있어요.</p>
+                    )}
                   </div>
-                  <Badge className="rounded-full bg-[#edf4ff] px-3 py-1.5 text-xs font-black text-[#005bac]">
-                    {unplacedCourses.length}
-                  </Badge>
-                </div>
-                <p className={`mt-2 text-sm font-medium ${isWaitingDrop ? 'text-[#1084e8]' : 'text-slate-500'}`}>
-                  {isWaitingDrop ? '여기에 놓으면 보드에서 빠집니다.' : '보드 블록을 끌어오면 대기 상태로 돌아갑니다.'}
-                </p>
-              </CardContent>
-            </Card>
-
-            {conflicts.length > 0 && (
-              <Card className="rounded-[2rem] border border-rose-200 bg-rose-50 shadow-none">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 text-rose-700">
-                    <AlertTriangle className="h-4 w-4" />
-                    <p className="font-black">시간 충돌</p>
-                  </div>
-                  <ul className="mt-3 space-y-2 text-sm font-medium text-rose-700">
-                    {conflicts.slice(0, 4).map((conflict) => (
-                      <li key={conflict}>{conflict}</li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
-
-            <Card className="rounded-[2rem] border border-[rgba(15,23,42,0.08)] bg-white shadow-[0_16px_40px_rgba(15,23,42,0.06)] xl:flex xl:min-h-0 xl:flex-col">
-              <CardContent className="flex flex-col p-5 xl:min-h-0">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#005bac]">담은 강의</p>
-                    <h3 className="mt-1 text-xl font-black text-slate-950">배치할 블록</h3>
-                  </div>
-                  <Badge className="rounded-full bg-[#edf4ff] px-3 py-1.5 text-xs font-black text-[#005bac]">
-                    {unplacedCourses.length}개
-                  </Badge>
                 </div>
 
-                <div className="space-y-3 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
-                  {isLoading ? (
-                    <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-slate-400">
-                      불러오는 중
-                    </div>
-                  ) : unplacedCourses.length === 0 ? (
-                    <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
-                      <p className="font-bold text-slate-500">대기 중인 강의가 없습니다.</p>
-                    </div>
-                  ) : (
-                    unplacedCourses.map((course) => (
+                <div>
+                  <div className="relative mx-auto w-fit">
+                    <div className="grid w-fit grid-cols-[64px_repeat(5,132px)] gap-0 lg:grid-cols-[68px_repeat(5,144px)] xl:grid-cols-[72px_repeat(5,152px)]">
+                    <div className="h-11 border border-[#e4ebf3] bg-[#fafcff]" />
+                    {TIMETABLE_DAYS.map((day, index) => (
                       <div
-                        key={course.id}
-                        draggable
-                        onDragStart={(event) => handleDragStart(event, course.id, 'cart')}
-                        onDragEnd={handleDragEnd}
-                        className={`rounded-[1.5rem] border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 ${
-                          draggedCourseId === course.id
-                            ? 'scale-[1.02] border-[#1084e8] shadow-[0_20px_36px_rgba(16,132,232,0.18)]'
-                            : 'border-slate-200'
+                        key={day}
+                        className={`flex h-11 items-center justify-center border-b border-t border-r border-[#e4ebf3] bg-[#fafcff] text-[15px] font-semibold tracking-[-0.03em] text-slate-700 ${
+                          index === 0 ? 'border-l' : ''
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className={`inline-flex h-3 w-3 rounded-full bg-gradient-to-br ${getBlockStyle(course.id).split(' ')[0]} ${getBlockStyle(course.id).split(' ')[1]}`} />
-                              <p className="line-clamp-1 text-base font-black text-slate-900">{course.name}</p>
-                            </div>
-                            <p className="mt-1 text-sm font-medium text-slate-500">{course.professor} 교수님</p>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {course.slots.map((slot) => (
-                                <span key={`${course.id}-${slot.day}-${slot.startPeriod}`} className="rounded-full bg-[#edf4ff] px-3 py-1 text-[11px] font-bold text-[#005bac]">
-                                  {slot.day} {slot.startPeriod}-{slot.endPeriod}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
+                        {day}
+                      </div>
+                    ))}
 
-                          <div className="flex flex-col gap-2">
-                            <Button onClick={() => handlePlaceCourse(course.id)} className="rounded-full px-4 text-xs font-bold text-white">
-                              <Plus className="mr-1 h-3.5 w-3.5" />
-                              올리기
-                            </Button>
-                            <Button variant="outline" onClick={() => handleRemoveFromCart(course.id)} className="rounded-full px-4 text-xs font-bold">
-                              <Trash2 className="mr-1 h-3.5 w-3.5" />
-                              제거
-                            </Button>
+                    <div className="relative border-x border-b border-[#e4ebf3] bg-[#fbfcfe]" style={{ height: boardHeight }}>
+                      {displayedPeriods.map((period) => (
+                        <div
+                          key={`label-${period.period}`}
+                          className="absolute left-0 right-0 flex flex-col items-center justify-center border-t border-[#e7edf4] bg-[#fbfcfe] text-center"
+                          style={{ top: getRowTop(period.period) }}
+                        >
+                          <div className="flex w-full flex-col items-center justify-center" style={{ height: rowHeight }}>
+                            <p className="text-[13px] font-semibold tracking-[-0.03em] text-slate-500">{period.time}</p>
                           </div>
                         </div>
+                      ))}
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 border-t border-[#e4ebf3]" />
+                    </div>
+
+                    {dayColumns.map((column, index) => (
+                      <div
+                        key={column.day}
+                        className={`relative overflow-hidden border-b border-r border-[#e4ebf3] bg-white ${
+                          index === 0 ? 'border-l' : ''
+                        }`}
+                        style={{ height: boardHeight }}
+                      >
+                        {displayedPeriods.map((period) => (
+                          <div
+                            key={`${column.day}-cell-${period.period}`}
+                            className="absolute left-0 right-0 border-t border-[#eef3f8] bg-white"
+                            style={{ top: getRowTop(period.period), height: rowHeight }}
+                          />
+                        ))}
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] border-t border-[#e4ebf3]" />
+
+                        {draggedCourse &&
+                          previewEntries
+                            .filter((entry) => entry.day === column.day)
+                            .map((entry) => {
+                              const frame = getEntryFrame(entry.startPeriod, entry.endPeriod);
+
+                              return (
+                                <div
+                                  key={`preview-${entry.courseId}-${entry.day}-${entry.startPeriod}`}
+                                  className={`pointer-events-none absolute left-0 right-0 overflow-hidden border px-2 py-2 ${
+                                    previewConflicts ? 'border-rose-300 bg-rose-50/85' : ''
+                                  }`}
+                                  style={
+                                    previewConflicts
+                                      ? { ...frame }
+                                      : {
+                                          ...frame,
+                                          borderColor: previewTheme?.outline,
+                                          backgroundColor: previewTheme?.preview,
+                                        }
+                                  }
+                                >
+                                  <p
+                                    className={`relative z-10 line-clamp-2 break-keep text-xs font-black ${
+                                      previewConflicts ? 'text-rose-600' : ''
+                                    }`}
+                                    style={previewConflicts ? undefined : { color: previewTheme?.text }}
+                                  >
+                                    {entry.courseName}
+                                  </p>
+                                </div>
+                              );
+                            })}
+
+                        {column.entries.map((entry) => {
+                          const frame = getEntryFrame(entry.startPeriod, entry.endPeriod);
+                          const blockTheme = BLOCK_THEMES[assignedThemeIndices[entry.courseId] ?? 0];
+
+                          return (
+                            <div
+                              key={`${entry.courseId}-${entry.day}-${entry.startPeriod}`}
+                              draggable
+                              onDragStart={(event) => handleDragStart(event, entry.courseId)}
+                              onDragEnd={handleDragEnd}
+                              onClick={() => handleUnplaceCourse(entry.courseId)}
+                              className={`absolute left-0 right-0 cursor-grab overflow-hidden border transition-all active:cursor-grabbing ${
+                                recentlyPlacedCourseId === entry.courseId ? 'scale-[1.01] animate-[pulse_350ms_ease-out_1]' : ''
+                              }`}
+                              style={{
+                                ...frame,
+                                borderColor: blockTheme.outline,
+                                borderRadius: '12px',
+                                backgroundColor: blockTheme.boardSurface,
+                                boxShadow: `0 10px 20px -18px ${blockTheme.glow}`,
+                                color: blockTheme.text,
+                              }}
+                            >
+                              <div className="relative z-10 flex h-full flex-col p-2">
+                                <p className="line-clamp-2 break-keep text-[13px] font-black leading-[1.2] tracking-[-0.03em]">{entry.courseName}</p>
+                                <p className="mt-auto line-clamp-1 text-[11px] font-medium opacity-75">{entry.location}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))
-                  )}
+                    ))}
+                    </div>
+
+                    {placedCourses.length === 0 && !draggedCourse ? (
+                      <div className="pointer-events-none absolute left-1/2 top-[calc(50%+22px)] z-10 w-[360px] max-w-[calc(100%-80px)] -translate-x-1/2 -translate-y-1/2 px-6 text-center">
+                        <div>
+                          <p className="text-base font-bold tracking-[-0.03em] text-slate-400">비어 있음</p>
+                          <p className="mt-2 text-sm font-medium leading-6 text-slate-400">찜한 강의를 담아 시간표를 완성해보세요.</p>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </CardContent>
             </Card>
-
-            {placedCourses.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {placedCourses.map((course) => (
-                  <button
-                    key={course.id}
-                    type="button"
-                    onClick={() => handleUnplaceCourse(course.id)}
-                    className="rounded-full border border-[#d7e7f6] bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm transition hover:border-[#1084e8]/25 hover:text-[#005bac]"
-                  >
-                    {course.name}
-                    <X className="ml-1 inline h-3 w-3" />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>

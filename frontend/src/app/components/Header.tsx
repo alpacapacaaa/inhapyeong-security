@@ -26,14 +26,14 @@ export function Header({ isLoggedIn = false, onLogout }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[rgba(15,23,42,0.08)] bg-[rgba(243,246,248,0.86)] backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-[rgba(15,23,42,0.08)] bg-[rgba(246,247,243,0.88)] backdrop-blur-xl">
       <div className="page-shell flex items-center justify-between gap-4 py-4">
         <div className="flex min-w-0 flex-1 items-center gap-4 lg:gap-6">
           <Link to="/" className="group flex shrink-0 items-center gap-3">
-            <div className="flex items-center gap-2 text-slate-950">
-              <span className="text-xl font-black tracking-tight">인하평</span>
+            <div className="flex items-baseline gap-2 text-slate-950">
+              <span className="text-2xl font-black tracking-[-0.06em]">인하평</span>
               <span className="text-slate-300">|</span>
-              <span className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500 transition-colors group-hover:text-[#005bac]">
+              <span className="text-[11px] font-black uppercase tracking-[0.28em] text-slate-500 transition-colors group-hover:text-[#005bac]">
                 Archive
               </span>
             </div>
@@ -49,8 +49,8 @@ export function Header({ isLoggedIn = false, onLogout }: HeaderProps) {
                   to={to}
                   className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-all ${
                     isActive
-                      ? 'border border-[rgba(15,23,42,0.08)] bg-white text-[#005bac] shadow-[0_10px_24px_rgba(15,23,42,0.04)]'
-                      : 'text-slate-600 hover:bg-white hover:text-slate-900'
+                      ? 'border border-[rgba(15,23,42,0.08)] bg-white text-[#005bac] shadow-[0_8px_20px_rgba(15,23,42,0.04)]'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -71,7 +71,7 @@ export function Header({ isLoggedIn = false, onLogout }: HeaderProps) {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="강의명, 교수님, 학과로 찾아보세요"
-                  className="h-12 w-full rounded-full border border-[rgba(15,23,42,0.08)] bg-white pl-11 pr-4 text-sm font-medium text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition-all duration-200 placeholder:text-slate-400 focus:border-[#005bac] focus:outline-none focus:ring-4 focus:ring-[#005bac]/10"
+                  className="h-12 w-full rounded-full border border-[rgba(15,23,42,0.08)] bg-white pl-11 pr-4 text-sm font-medium text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.04)] transition-all duration-200 placeholder:text-slate-400 focus:border-[#005bac] focus:outline-none focus:ring-4 focus:ring-[#005bac]/10"
                 />
               </div>
             </form>

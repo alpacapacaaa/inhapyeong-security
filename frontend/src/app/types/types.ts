@@ -30,6 +30,7 @@ export interface Review {
   likes: number;
   createdAt: Date;
   isAnonymous: boolean;
+  badges?: string[];
 
   // Premium / Extended fields
   examTypes?: string[];
@@ -38,10 +39,58 @@ export interface Review {
   oneLineTip?: string;
   examInfo?: string;
   examKeywords?: string[];
+  examMidtermInfo?: string;
+  examFinalInfo?: string;
+  examAssignmentInfo?: string;
+  examQuizInfo?: string;
+  pastExamHelpfulness?: string;
+  scopePredictability?: string;
+  studyResources?: string[];
+  problemStyles?: string[];
+  examPrepTip?: string;
   recommendFor?: string[];
   notRecommendFor?: string[];
 
   // Hexagon numerical stats (1-5)
+  diffScore?: number;
+  teachingScore?: number;
+  gradScore?: number;
+  workScore?: number;
+  prerequisiteScore?: number;
+  depthScore?: number;
+  timeInvestScore?: number;
+  attScore?: number;
+  pastExamScore?: number;
+}
+
+export interface CreateReviewInput {
+  courseId: string;
+  semester: string;
+  rating: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  workload: 'light' | 'medium' | 'heavy';
+  attendance: 'strict' | 'medium' | 'flexible';
+  grading: 'generous' | 'medium' | 'strict';
+  content: string;
+  isAnonymous: boolean;
+  badges?: string[];
+  examTypes?: string[];
+  assignmentType?: string;
+  textbook?: string;
+  oneLineTip?: string;
+  examInfo?: string;
+  examKeywords?: string[];
+  examMidtermInfo?: string;
+  examFinalInfo?: string;
+  examAssignmentInfo?: string;
+  examQuizInfo?: string;
+  pastExamHelpfulness?: string;
+  scopePredictability?: string;
+  studyResources?: string[];
+  problemStyles?: string[];
+  examPrepTip?: string;
+  recommendFor?: string[];
+  notRecommendFor?: string[];
   diffScore?: number;
   teachingScore?: number;
   gradScore?: number;

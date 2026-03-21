@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import {
-  Star, Coins, Calendar, Loader2, User as UserIcon, Building2,
+  Coins, Calendar, Loader2, User as UserIcon, Building2,
   ChevronDown, ChevronUp, Pencil, Check, X, Lock, Smartphone,
   Send, MessageSquare, Bell, AlertTriangle, Trash2, ArrowRight,
   PenTool, ShieldCheck, Gift, CreditCard, ChevronRight, Megaphone,
@@ -18,6 +18,7 @@ import { departments } from '../data/mockData';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { StarRating } from '../components/StarRating';
 
 type PointFilter = 'all' | 'earned' | 'spent';
 
@@ -384,74 +385,53 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
         <div className="page-shell py-8">
           <div className="space-y-6">
 
-            {/* ─── 프로필 카드 ─── */}
-            <div className="page-panel p-6 md:p-8">
-              <div className="flex items-center gap-5">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#edf4ff]">
-                  <UserIcon className="w-8 h-8 text-[#005bac]" />
+            <section className="page-panel bg-[linear-gradient(135deg,#f7fbff_0%,#ffffff_100%)] px-6 py-7">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div className="flex items-start gap-5">
+                  <div className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-[1.4rem] bg-[#edf4ff]">
+                    <UserIcon className="h-8 w-8 text-[#005bac]" />
+                  </div>
+                  <div>
+                    <p className="section-kicker">My Archive</p>
+                    <h1 className="mt-2 text-[1.9rem] font-black tracking-[-0.04em] text-slate-950 md:text-[2.1rem]">
+                      {user.nickname}님의 기록
+                    </h1>
+                    <p className="mt-3 flex flex-wrap items-center gap-2 text-sm font-medium text-slate-500">
+                      <Building2 className="h-4 w-4" />
+                      {user.department}
+                      <span className="text-slate-300">|</span>
+                      <span>{user.email}</span>
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    안녕하세요, {user.nickname}님 👋
-                  </h1>
-                  <p className="text-gray-500 font-medium flex items-center gap-2 mt-1">
-                    <Building2 className="w-4 h-4" />
-                    {user.department}
-                    <span className="text-gray-300">|</span>
-                    <span className="text-xs text-gray-400">{user.email}</span>
-                  </p>
-                </div>
-              </div>
-            </div>
 
-            {/* ─── 포인트 & 열람권 요약 ─── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="rounded-2xl border-[rgba(15,23,42,0.08)] shadow-sm">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#edf4ff]">
-                        <Coins className="w-6 h-6 text-[#005bac]" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">현재 포인트</p>
-                        <p className="text-2xl font-black text-gray-900">{user.points}<span className="text-lg text-gray-400 ml-0.5">P</span></p>
-                      </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-[1.05rem] border border-[#dbe4ee] bg-white px-5 py-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">현재 포인트</p>
+                    <div className="mt-2 flex items-end gap-1">
+                      <p className="text-3xl font-black text-slate-950">{user.points}</p>
+                      <span className="pb-1 text-sm font-bold text-slate-400">P</span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-2xl border-[rgba(15,23,42,0.08)] shadow-sm">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#edf4ff]">
-                        <ShieldCheck className="w-6 h-6 text-[#005bac]" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">열람권</p>
-                        <p className={`text-lg font-bold ${user.hasPass ? 'text-green-600' : 'text-gray-400'}`}>
-                          {user.hasPass && user.passExpiryDate
-                            ? `~${formatDate(user.passExpiryDate)} 까지`
-                            : '미보유'}
-                        </p>
-                      </div>
-                    </div>
-                    {!user.hasPass && (
+                  <div className="rounded-[1.05rem] border border-[#dbe4ee] bg-white px-5 py-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">열람권 상태</p>
+                    <p className={`mt-2 text-base font-black ${user.hasPass ? 'text-green-600' : 'text-slate-500'}`}>
+                      {user.hasPass && user.passExpiryDate ? `~${formatDate(user.passExpiryDate)} 까지` : '미보유'}
+                    </p>
+                    {!user.hasPass ? (
                       <Button
                         size="sm"
                         disabled={user.points < 50}
                         onClick={handlePurchasePass}
-                        className="rounded-xl text-xs font-bold h-9 px-4"
+                        className="mt-3 h-9 rounded-full px-4 text-xs font-bold"
                       >
                         구매 -50P
                       </Button>
-                    )}
+                    ) : null}
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </div>
+            </section>
 
             {/* ─── 📢 공지사항 ─── */}
             <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -475,7 +455,7 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                 {(showAllNotices ? notices : notices.slice(0, 2)).map((notice) => (
                   <div
                     key={notice.id}
-                    className={`rounded-xl border transition-all cursor-pointer ${expandedNotice === notice.id ? 'border-amber-200 bg-amber-50/50' : 'border-gray-100 hover:border-gray-200'}`}
+                    className={`cursor-pointer rounded-2xl border transition-all ${expandedNotice === notice.id ? 'border-amber-200 bg-amber-50/40' : 'border-[rgba(15,23,42,0.08)] bg-white hover:border-gray-200'}`}
                     onClick={() => setExpandedNotice(prev => prev === notice.id ? null : notice.id)}
                   >
                     <div className="flex items-center justify-between px-4 py-3">
@@ -517,12 +497,15 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
               </div>
               <div className="space-y-1">
                 {recentHistory.length === 0 && (
-                  <p className="text-gray-400 text-sm text-center py-6">포인트 내역이 없습니다.</p>
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center">
+                    <p className="text-sm font-bold text-slate-600">포인트 내역이 아직 없습니다.</p>
+                    <p className="mt-2 text-sm text-slate-500">강의평을 작성하거나 열람권을 구매하면 이력이 여기에 쌓입니다.</p>
+                  </div>
                 )}
                 {recentHistory.map((history) => (
-                  <div key={history.id} className="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-xl transition-colors">
+                  <div key={history.id} className="flex items-center justify-between rounded-xl px-2 py-3 transition-colors hover:bg-gray-50">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-50">
                         {getPointIcon(history.description)}
                       </div>
                       <div>
@@ -539,10 +522,10 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
               {pointHistory.length > 3 && (
                 <button
                   onClick={() => setShowPointModal(true)}
-                  className="w-full mt-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 rounded-xl text-sm font-bold text-indigo-600 transition-all flex items-center justify-center gap-2 group"
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-[rgba(15,23,42,0.08)] bg-white py-3 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
                 >
                   전체 내역 보기
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               )}
               {pointHistory.length > 0 && pointHistory.length <= 3 && (
@@ -559,7 +542,7 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
               </h2>
               <div className="space-y-1">
                 {userReviews.map((review) => (
-                  <div key={review.id} className="flex items-center justify-between gap-3 py-3 px-2 hover:bg-gray-50 rounded-xl transition-colors">
+                  <div key={review.id} className="flex items-center justify-between gap-3 rounded-xl border-b border-[rgba(15,23,42,0.08)] py-3 last:border-b-0">
                     <Link to={`/course/${review.courseId}`} className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
@@ -568,14 +551,13 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                           </p>
                           <p className="text-xs text-gray-400 mt-0.5">{review.semester}</p>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          {Array.from({ length: 5 }, (_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-3.5 h-3.5 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}`}
-                            />
-                          ))}
-                        </div>
+                        <StarRating
+                          value={review.rating}
+                          size="sm"
+                          showValue={false}
+                          className="shrink-0"
+                          starClassName="h-3.5 w-3.5"
+                        />
                       </div>
                     </Link>
                     <Button
@@ -584,14 +566,20 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                       size="sm"
                       disabled={isSaving}
                       onClick={() => handleDeleteReview(review.id)}
-                      className="shrink-0 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 px-2"
+                      className="shrink-0 rounded-lg px-2 text-red-500 hover:bg-red-50 hover:text-red-600"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 ))}
                 {userReviews.length === 0 && (
-                  <p className="text-gray-400 text-sm text-center py-8">아직 작성한 강의평이 없습니다.</p>
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center">
+                    <p className="text-base font-bold text-slate-700">아직 작성한 강의평이 없습니다.</p>
+                    <p className="mt-2 text-sm text-slate-500">첫 강의평을 남기면 포인트도 받고, 나중에 여기서 다시 관리할 수 있습니다.</p>
+                    <Link to="/search" className="mt-5 inline-flex">
+                      <Button className="rounded-full px-5 font-bold text-white">강의 둘러보러 가기</Button>
+                    </Link>
+                  </div>
                 )}
               </div>
             </div>
@@ -613,9 +601,9 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
               </button>
 
               {activeSection === 'profile' && (
-                <div className="mt-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-[rgba(15,23,42,0.08)] animate-in slide-in-from-top-2 duration-200">
                   {/* 닉네임 */}
-                  <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-xl">
+                  <div className="flex items-center justify-between gap-4 border-b border-[rgba(15,23,42,0.08)] bg-white px-5 py-4">
                     <div className="flex items-center gap-3">
                       <UserIcon className="w-4 h-4 text-gray-400" />
                       <div>
@@ -646,7 +634,7 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                   </div>
 
                   {/* 학과 */}
-                  <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-xl">
+                  <div className="flex items-center justify-between gap-4 border-b border-[rgba(15,23,42,0.08)] bg-white px-5 py-4">
                     <div className="flex items-center gap-3">
                       <Building2 className="w-4 h-4 text-gray-400" />
                       <div>
@@ -679,7 +667,7 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                   </div>
 
                   {/* 전화번호 */}
-                  <div className="py-3 px-4 bg-gray-50 rounded-xl">
+                  <div className="border-b border-[rgba(15,23,42,0.08)] bg-white px-5 py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Smartphone className="w-4 h-4 text-gray-400" />
@@ -722,7 +710,7 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                   </div>
 
                   {/* 비밀번호 */}
-                  <div className="py-3 px-4 bg-gray-50 rounded-xl">
+                  <div className="bg-white px-5 py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Lock className="w-4 h-4 text-gray-400" />
@@ -754,7 +742,7 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
             </div>
 
             {/* ─── 📩 관리자 문의하기 ─── */}
-            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
+            <div className="page-panel p-6">
               <button
                 onClick={() => toggleSection('inquiry')}
                 className="w-full flex items-center justify-between"
@@ -773,7 +761,7 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                 <div className="mt-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
                   {/* 문의 작성 폼 */}
                   {showInquiryForm ? (
-                    <div className="space-y-3 p-4 bg-gray-50 rounded-xl">
+                    <div className="space-y-3 rounded-[1.5rem] border border-[rgba(15,23,42,0.08)] bg-white p-5">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-bold text-gray-500">카테고리</Label>
                         <Select value={inquiryCategory} onValueChange={setInquiryCategory}>
@@ -811,7 +799,7 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                     <Button
                       onClick={() => setShowInquiryForm(true)}
                       variant="outline"
-                      className="w-full h-12 rounded-xl border-dashed border-gray-300 text-gray-500 hover:text-indigo-600 hover:border-indigo-300 font-bold"
+                      className="w-full h-12 rounded-xl border-dashed border-gray-300 text-gray-500 hover:border-indigo-300 hover:text-indigo-600 font-bold"
                     >
                       <Send className="w-4 h-4 mr-2" />
                       새 문의 작성하기
@@ -819,11 +807,11 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                   )}
 
                   {/* 기존 문의 내역 */}
-                  {inquiries.length > 0 && (
+                  {inquiries.length > 0 ? (
                     <div className="space-y-2 pt-2">
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">내 문의 내역</p>
                       {inquiries.map(inq => (
-                        <div key={inq.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <div key={inq.id} className="rounded-[1.4rem] border border-[rgba(15,23,42,0.08)] bg-white p-4">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-bold bg-gray-200 text-gray-600 px-2 py-0.5 rounded">{inq.category}</span>
@@ -836,13 +824,18 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                           <p className="text-sm font-semibold text-gray-800">{inq.title}</p>
                           <p className="text-xs text-gray-500 mt-1">{inq.content}</p>
                           {inq.answer && (
-                            <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                            <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3">
                               <p className="text-xs font-bold text-blue-700 mb-1">관리자 답변</p>
                               <p className="text-xs text-blue-800">{inq.answer}</p>
                             </div>
                           )}
                         </div>
                       ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center">
+                      <p className="text-sm font-bold text-slate-600">문의 내역이 없습니다.</p>
+                      <p className="mt-2 text-sm text-slate-500">서비스 이용 중 막히는 점이 생기면 여기서 바로 관리자에게 남길 수 있습니다.</p>
                     </div>
                   )}
                 </div>

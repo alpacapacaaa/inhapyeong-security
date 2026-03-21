@@ -27,7 +27,7 @@ export function useCourseStats(course: Course, reviews: Review[]) {
 
         const fbDiffScore = getAverageScore(reviews, 'difficulty', 'hard', 'medium', 'easy');
         const fbWorkScore = getAverageScore(reviews, 'workload', 'heavy', 'medium', 'light');
-        const fbAttScore = getAverageScore(reviews, 'attendance', 'strict', 'medium', 'flexible');
+        const fbAttScore = getAverageScore(reviews, 'attendance', 'flexible', 'medium', 'strict');
         const fbGradScore = getAverageScore(reviews, 'grading', 'generous', 'medium', 'strict');
 
         const diffScore = getAverageNumericScore(reviews, 'diffScore', fbDiffScore);
