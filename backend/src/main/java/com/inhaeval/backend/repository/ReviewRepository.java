@@ -6,6 +6,8 @@ import java.util.List;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
+    List<Review> findByMemberIdOrderByCreatedAtDesc(Long memberId);
+
     // 1. 최신 등록순 (Latest)
     List<Review> findByCourseIdOrderByCreatedAtDesc(Long courseId);
 
