@@ -21,7 +21,11 @@ public class PointHistory {
     private Member member;
 
     @Column(nullable = false)
-    private int amount; // +50, -50 등 증감량
+    private int points; // +50, -50 등 증감량
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "review_id")
+    private Review review;
 
     @Column(nullable = false)
     private String description; // 사유 (예: "강의평 작성", "열람권 구매")

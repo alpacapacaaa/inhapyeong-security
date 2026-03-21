@@ -61,6 +61,47 @@ public class Review {
 
     private LocalDateTime updatedAt;
 
+        // --- Premium / Extended fields (프론트엔드의 추가 정보) ---
+    @ElementCollection
+    @CollectionTable(name = "review_exam_types", joinColumns = @JoinColumn(name = "review_id"))
+    @Column(name = "exam_type")
+    private java.util.List<String> examTypes;
+
+    private String assignmentType;
+    private String textbook;
+    private String oneLineTip;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String examInfo;
+
+    @ElementCollection
+    @CollectionTable(name = "review_exam_keywords", joinColumns = @JoinColumn(name = "review_id"))
+    @Column(name = "keyword")
+    private java.util.List<String> examKeywords;
+
+    @ElementCollection
+    @CollectionTable(name = "review_recommend_for", joinColumns = @JoinColumn(name = "review_id"))
+    @Column(name = "recommend")
+    private java.util.List<String> recommendFor;
+
+    @ElementCollection
+    @CollectionTable(name = "review_not_recommend_for", joinColumns = @JoinColumn(name = "review_id"))
+    @Column(name = "not_recommend")
+    private java.util.List<String> notRecommendFor;
+
+    // --- Hexagon numerical stats (1-5점 육각형 스탯) ---
+    private Integer diffScore;
+    private Integer teachingScore;
+    private Integer gradScore;
+    private Integer workScore;
+    private Integer prerequisiteScore;
+    private Integer depthScore;
+    private Integer timeInvestScore;
+    private Integer attScore;
+    private Integer pastExamScore;
+
+
     @PrePersist
     public void prePersist() { this.createdAt = LocalDateTime.now(); }
     
