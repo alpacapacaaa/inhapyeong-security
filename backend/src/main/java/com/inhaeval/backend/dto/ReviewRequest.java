@@ -29,6 +29,17 @@ public class ReviewRequest {
     private List<String> recommendFor;
     private List<String> notRecommendFor;
 
+    private List<String> badges;
+    private String examMidtermInfo;
+    private String examFinalInfo;
+    private String examAssignmentInfo;
+    private String examQuizInfo;
+    private String pastExamHelpfulness;
+    private String scopePredictability;
+    private List<String> studyResources;
+    private List<String> problemStyles;
+    private String examPrepTip;
+
     // 육각형 스탯 정보
     private Integer diffScore;
     private Integer teachingScore;
