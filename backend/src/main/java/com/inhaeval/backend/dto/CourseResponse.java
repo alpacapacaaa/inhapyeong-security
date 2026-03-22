@@ -13,6 +13,7 @@ public class CourseResponse {
     private String professor;
     private String department;
     private Integer credits;    // 3학점, 2학점
+    private String section;
     private String semester;
     private float rating;       // 평균 평점
     private int reviewCount;
@@ -31,7 +32,8 @@ public class CourseResponse {
                 .name(course.getName())
                 .professor(course.getProfessor())
                 .department(course.getDepartment())
-                .credits(course.getCredits()) 
+                .credits(course.getCredits())
+                .section(course.getSection())
                 .semester(course.getSemester())
                 .rating(course.getRating())
                 .reviewCount(course.getReviewCount())

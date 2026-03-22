@@ -55,12 +55,23 @@ interface AuthResponse {
   points: number;
 }
 
+interface UserResponseDto {
+  id: number;
+  email: string;
+  nickname: string;
+  department: string;
+  points: number;
+  hasPass: boolean;
+  passExpiryDate?: string | null;
+}
+
 interface CourseResponseDto {
   id: number;
   name: string;
   professor: string;
   department: string;
   credits?: number;
+  section?: string;
   semester?: string;
   rating: number;
   reviewCount: number;
@@ -225,6 +236,7 @@ const mapCourseResponse = (course: CourseResponseDto): Course => ({
   professor: course.professor,
   department: course.department,
   credits: course.credits,
+  section: course.section,
   rating: course.rating ?? 0,
   reviewCount: course.reviewCount ?? 0,
   difficulty: normalizeDifficulty(course.difficulty),
@@ -282,6 +294,16 @@ const mapPointHistoryResponse = (history: PointHistoryResponseDto): PointHistory
   date: new Date(history.date),
   description: history.description,
   points: history.points,
+});
+
+const mapUserResponse = (user: UserResponseDto): User => ({
+  id: String(user.id),
+  email: user.email,
+  nickname: user.nickname,
+  department: user.department,
+  points: user.points,
+  hasPass: user.hasPass,
+  passExpiryDate: user.passExpiryDate ? new Date(user.passExpiryDate) : undefined,
 });
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
@@ -407,8 +429,23 @@ export const courseService = {
     return results.map(mapCourseResponse);
   },
 
+  getFamousCourses: async (): Promise<Course[]> => {
+    const results = await apiRequest<CourseResponseDto[]>('/api/courses/famous');
+    return results.map(mapCourseResponse);
+  },
+
+  getVerifiedCourses: async (): Promise<Course[]> => {
+    const results = await apiRequest<CourseResponseDto[]>('/api/courses/verified');
+    return results.map(mapCourseResponse);
+  },
+
+  getGrowthCourses: async (): Promise<Course[]> => {
+    const results = await apiRequest<CourseResponseDto[]>('/api/courses/growth');
+    return results.map(mapCourseResponse);
+  },
+
   getMajorRecommended: async (department: string): Promise<Course[]> => {
-    const courses = await courseService.getAllCourses();
+    const courses = await courseService.getFamousCourses().catch(() => courseService.getAllCourses());
     return courses
       .filter((c) => c.department === department && c.category === '전공')
       .sort((a, b) => b.rating - a.rating)
@@ -477,20 +514,28 @@ export const reviewService = {
       method: 'DELETE',
     });
   },
+
+  likeReview: async (reviewId: string): Promise<void> => {
+    await apiRequest<void>(`/api/reviews/${reviewId}/like`, {
+      method: 'POST',
+    });
+  },
 };
 
 export const userService = {
   getCurrentUser: async (): Promise<User | null> => {
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     if (!token) return null;
-
-    const storedUser = loadStoredUser();
-    if (storedUser) {
-      currentUser = storedUser;
-      return storedUser;
+    try {
+      const result = await apiRequest<UserResponseDto>('/api/users/me');
+      currentUser = mapUserResponse(result);
+      saveAuthSession(token, currentUser);
+      return currentUser;
+    } catch {
+      clearAuthSession();
+      currentUser = null;
+      return null;
     }
-
-    return currentUser;
   },
 
   login: async (email: string, password?: string): Promise<User> => {
@@ -514,8 +559,17 @@ export const userService = {
       body: JSON.stringify({ email, password }),
     });
 
-    currentUser = buildSessionUser(auth, { email });
-    saveAuthSession(auth.accessToken, currentUser);
+    saveAuthSession(auth.accessToken, buildSessionUser(auth, { email }));
+    try {
+      const profile = await apiRequest<UserResponseDto>('/api/users/me', {
+        headers: { Authorization: `Bearer ${auth.accessToken}` },
+      });
+      currentUser = mapUserResponse(profile);
+      saveAuthSession(auth.accessToken, currentUser);
+    } catch {
+      currentUser = buildSessionUser(auth, { email });
+      saveAuthSession(auth.accessToken, currentUser);
+    }
 
     return currentUser;
   },
@@ -531,11 +585,23 @@ export const userService = {
       body: JSON.stringify(payload),
     });
 
-    currentUser = buildSessionUser(auth, {
+    saveAuthSession(auth.accessToken, buildSessionUser(auth, {
       email: payload.email,
       department: payload.department,
-    });
-    saveAuthSession(auth.accessToken, currentUser);
+    }));
+    try {
+      const profile = await apiRequest<UserResponseDto>('/api/users/me', {
+        headers: { Authorization: `Bearer ${auth.accessToken}` },
+      });
+      currentUser = mapUserResponse(profile);
+      saveAuthSession(auth.accessToken, currentUser);
+    } catch {
+      currentUser = buildSessionUser(auth, {
+        email: payload.email,
+        department: payload.department,
+      });
+      saveAuthSession(auth.accessToken, currentUser);
+    }
 
     return currentUser;
   },
@@ -569,6 +635,14 @@ export const userService = {
     return true;
   },
 
+  verifyPasswordResetCode: async (phone: string, code: string): Promise<boolean> => {
+    await apiRequest<void>('/api/auth/password/verify', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber: phone, code }),
+    });
+    return true;
+  },
+
   findPassword: async (email: string, phone: string): Promise<void> => {
     await apiRequest<void>('/api/auth/password/send', {
       method: 'POST',
@@ -590,50 +664,25 @@ export const userService = {
   },
 
   purchasePass: async (): Promise<User> => {
-    await delay(400);
-    const user = requireCurrentUser();
-
-    if (user.points < 50) {
-      throw new Error('포인트가 부족합니다.');
+    const result = await apiRequest<UserResponseDto>('/api/users/me/pass', {
+      method: 'POST',
+    });
+    currentUser = mapUserResponse(result);
+    if (getStoredAuthToken()) {
+      saveAuthSession(getStoredAuthToken() as string, currentUser);
     }
-
-    currentUser = {
-      ...user,
-      points: user.points - 50,
-      hasPass: true,
-      passExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-    };
-
-    // Add history
-    const history: PointHistory = {
-      id: Math.random().toString(36).substr(2, 9),
-      date: new Date(),
-      description: '열람권 구매',
-      points: -50,
-    };
-    pointHistory = [history, ...pointHistory];
-
-    return requireCurrentUser();
+    return currentUser;
   },
 
   addPoints: async (amount: number, description: string): Promise<User> => {
-    await delay(300);
-    const user = requireCurrentUser();
-
-    currentUser = {
-      ...user,
-      points: user.points + amount,
-    };
-
-    const history: PointHistory = {
-      id: Math.random().toString(36).substr(2, 9),
-      date: new Date(),
-      description: description,
-      points: amount,
-    };
-    pointHistory = [history, ...pointHistory];
-
-    return requireCurrentUser();
+    void amount;
+    void description;
+    const refreshedUser = await userService.getCurrentUser();
+    if (refreshedUser) {
+      await userService.getPointHistory();
+      return refreshedUser;
+    }
+    throw new Error('로그인이 필요합니다.');
   },
 
   getPointHistory: async (): Promise<PointHistory[]> => {
@@ -643,43 +692,59 @@ export const userService = {
   },
 
   updateProfile: async (data: { nickname?: string; department?: string }): Promise<User> => {
-    await delay(400);
-    const user = requireCurrentUser();
+    let updatedUser: User | null = null;
 
-    currentUser = {
-      ...user,
-      ...(data.nickname && { nickname: data.nickname }),
-      ...(data.department && { department: data.department }),
-    };
-    return requireCurrentUser();
+    if (data.nickname) {
+      const result = await apiRequest<UserResponseDto>('/api/users/me/nickname', {
+        method: 'PATCH',
+        body: JSON.stringify({ nickname: data.nickname }),
+      });
+      updatedUser = mapUserResponse(result);
+    }
+
+    if (data.department) {
+      const result = await apiRequest<UserResponseDto>('/api/users/me/department', {
+        method: 'PATCH',
+        body: JSON.stringify({ department: data.department }),
+      });
+      updatedUser = mapUserResponse(result);
+    }
+
+    if (!updatedUser) {
+      return requireCurrentUser();
+    }
+
+    currentUser = updatedUser;
+    if (getStoredAuthToken()) {
+      saveAuthSession(getStoredAuthToken() as string, currentUser);
+    }
+    return currentUser;
   },
 
   changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
-    await delay(500);
-    if (currentPassword === 'wrong') {
-      throw new Error('현재 비밀번호가 틀렸습니다.');
-    }
-    if (newPassword.length < 4) {
-      throw new Error('새 비밀번호는 4자리 이상이어야 합니다.');
-    }
-    console.log(`Password changed to ${newPassword}`);
+    await apiRequest<void>('/api/users/me/password', {
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
   },
 
   changePhone: async (newPhone: string, verificationCode: string): Promise<User> => {
-    await delay(400);
-    if (verificationCode !== '111111') {
-      throw new Error('인증코드가 일치하지 않습니다.');
+    const result = await apiRequest<UserResponseDto>('/api/users/me/phone', {
+      method: 'PATCH',
+      body: JSON.stringify({ phoneNumber: newPhone, verificationCode }),
+    });
+    currentUser = mapUserResponse(result);
+    if (getStoredAuthToken()) {
+      saveAuthSession(getStoredAuthToken() as string, currentUser);
     }
-    // Phone is stored conceptually (not in User type currently, but we accept it)
-    console.log(`Phone changed to ${newPhone}`);
-    return requireCurrentUser();
+    return currentUser;
   },
 
   deleteAccount: async (password: string): Promise<void> => {
-    await delay(600);
-    if (password === 'wrong') {
-      throw new Error('비밀번호가 틀렸습니다.');
-    }
+    await apiRequest<void>('/api/users/me', {
+      method: 'DELETE',
+      body: JSON.stringify({ password }),
+    });
     clearAuthSession();
     currentUser = null;
   },

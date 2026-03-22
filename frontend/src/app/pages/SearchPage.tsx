@@ -113,6 +113,7 @@ function TimetablePanel({
       courseId: course.id,
       courseName: course.name,
       professor: course.professor,
+      section: course.section,
     })),
   );
 
@@ -128,7 +129,7 @@ function TimetablePanel({
       }
 
       return [
-        `${entry.day} ${entry.courseName}(${entry.professor}) · ${other.courseName}(${other.professor}) 시간이 겹칩니다.`,
+        `${entry.day} ${entry.courseName}(${entry.professor}${entry.section ? ` ${entry.section}분반` : ''}) · ${other.courseName}(${other.professor}${other.section ? ` ${other.section}분반` : ''}) 시간이 겹칩니다.`,
       ];
     }),
   );
@@ -208,7 +209,9 @@ function TimetablePanel({
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-lg font-black text-slate-900">{course.name}</p>
-                        <p className="mt-1 text-sm font-medium text-slate-500">{course.professor} 교수님</p>
+                        <p className="mt-1 text-sm font-medium text-slate-500">
+                          {course.professor} 교수님{course.section ? ` · ${course.section}분반` : ''}
+                        </p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           {(TIMETABLE_BY_COURSE_ID[course.id] ?? []).map((slot) => (
                             <span key={`${course.id}-${slot.day}-${slot.startPeriod}`} className="rounded-full bg-[#eef7ff] px-3 py-1.5 text-xs font-bold text-[#005bac]">
@@ -277,7 +280,9 @@ function TimetablePanel({
                         <div className="space-y-1">
                           {matchingEntries.map((entry) => (
                             <div key={`${entry.courseId}-${entry.day}-${entry.startPeriod}`} className="rounded-lg bg-[#eef7ff] px-2 py-1.5">
-                              <p className="line-clamp-1 font-black text-[#005bac]">{entry.courseName}</p>
+                              <p className="line-clamp-1 font-black text-[#005bac]">
+                                {entry.courseName}{entry.section ? ` · ${entry.section}분반` : ''}
+                              </p>
                               <p className="line-clamp-1 text-[11px] font-medium text-slate-500">{entry.location}</p>
                             </div>
                           ))}
@@ -318,7 +323,7 @@ function SearchResultCard({
                   {course.name}
                 </h3>
                 <p className="mt-1.5 text-sm font-semibold text-slate-600 md:text-[15px]">
-                  {course.professor} 교수님 · {course.department}
+                  {course.professor} 교수님{course.section ? ` · ${course.section}분반` : ''} · {course.department}
                 </p>
               </div>
               <div className="flex flex-row flex-wrap items-center gap-2 md:justify-end">
@@ -437,7 +442,9 @@ function SubjectAccordionCard({
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="text-base font-black text-slate-900">{course.professor} 교수님</p>
+                        <p className="text-base font-black text-slate-900">
+                          {course.professor} 교수님{course.section ? ` · ${course.section}분반` : ''}
+                        </p>
                         <span
                           className={`rounded-full px-2.5 py-1 text-[11px] font-black ${
                             course.isOpenCurrent
@@ -564,7 +571,22 @@ export function SearchPage() {
         if (query.trim()) {
           results = await courseService.searchCourses(query, selectedDepartment);
         } else {
-          results = await courseService.getAllCourses();
+          if (selectedCategory === '전체') {
+            if (selectedTheme === 'top-rated') {
+              results = await courseService.getFamousCourses();
+            } else if (selectedTheme === 'easy-credit') {
+              results = await courseService.getHoneyGE();
+            } else if (selectedTheme === 'most-reviewed') {
+              results = await courseService.getVerifiedCourses();
+            } else if (selectedTheme === 'growth') {
+              results = await courseService.getGrowthCourses();
+            } else {
+              results = await courseService.getAllCourses();
+            }
+          } else {
+            results = await courseService.getAllCourses();
+          }
+
           if (selectedDepartment !== '전체') {
             results = results.filter((course) => course.department === selectedDepartment);
           }
@@ -582,7 +604,7 @@ export function SearchPage() {
           results = results.filter((course) => selectedTypes.includes(course.type));
         }
 
-        if (selectedCategory === '전체') {
+        if (selectedCategory === '전체' && query.trim()) {
           if (selectedTheme === 'top-rated') {
             results = results.filter((course) => course.rating >= 4.3);
           } else if (selectedTheme === 'easy-credit') {
@@ -637,7 +659,13 @@ export function SearchPage() {
     return [...map.values()]
       .map((group) => ({
         ...group,
-        professors: [...group.professors].sort((a, b) => a.professor.localeCompare(b.professor, 'ko')),
+        professors: [...group.professors].sort((a, b) => {
+          const professorOrder = a.professor.localeCompare(b.professor, 'ko');
+          if (professorOrder !== 0) {
+            return professorOrder;
+          }
+          return (a.section ?? '').localeCompare(b.section ?? '', 'ko');
+        }),
       }))
       .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
   }, [courses]);
@@ -661,7 +689,11 @@ export function SearchPage() {
         if (courseNameOrder !== 0) {
           return courseNameOrder;
         }
-        return a.professor.localeCompare(b.professor, 'ko');
+        const professorOrder = a.professor.localeCompare(b.professor, 'ko');
+        if (professorOrder !== 0) {
+          return professorOrder;
+        }
+        return (a.section ?? '').localeCompare(b.section ?? '', 'ko');
       }),
     [courses],
   );

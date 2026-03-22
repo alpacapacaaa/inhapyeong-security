@@ -187,12 +187,16 @@ export function ReviewWritePage() {
         notRecommendFor,
       });
 
-      await userService.addPoints(
-        totalReward,
-        bonusReward > 0 ? '상세 강의평 작성 + 추가 정보 보너스' : '상세 강의평 작성'
-      );
+      try {
+        await userService.addPoints(
+          totalReward,
+          bonusReward > 0 ? '상세 강의평 작성 + 추가 정보 보너스' : '상세 강의평 작성',
+        );
+      } catch {
+        // Ignore point refresh failures so successful review submission isn't blocked.
+      }
 
-      toast.success(`강의평이 등록되었습니다! ${totalReward}P를 받았습니다.`);
+      toast.success('강의평이 등록되었습니다. 포인트는 마이페이지에서 확인해주세요.');
       setTimeout(() => {
         navigate(`/course/${courseId}`);
       }, 1000);
