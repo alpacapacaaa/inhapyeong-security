@@ -6,7 +6,6 @@ import { Card, CardContent } from '../components/ui/card';
 import { CourseCardSkeleton } from '../components/course/CourseSkeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { courseService, userService } from '../api/api';
-import { departments } from '../data/mockData';
 import {
   loadTimetableCartIds,
   PERIODS,
@@ -26,11 +25,7 @@ import {
   ShoppingBag,
   X,
 } from 'lucide-react';
-import { CURRENT_SEMESTER_SHORT_LABEL } from '../lib/semester';
-const CURRENT_OPEN_COURSE_IDS = new Set([
-  '1', '2', '3', '4', '5', '6', '8', '9', '101',
-  '201', '202', '203', '204', '205', '206', '301', '302', '303', '304', '305', '306',
-]);
+import { CURRENT_SEMESTER_SHORT_LABEL, normalizeSemesterShortLabel } from '../lib/semester';
 
 type SearchResultItem = Course & {
   isOpenCurrent: boolean;
@@ -93,7 +88,8 @@ const workloadLabel = {
 const sortByKoreanName = <T extends { name: string }>(items: T[]) =>
   [...items].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
 
-const getCourseOpenState = (course: Course) => CURRENT_OPEN_COURSE_IDS.has(course.id);
+const getCourseOpenState = (course: Course) =>
+  normalizeSemesterShortLabel(course.semester) === CURRENT_SEMESTER_SHORT_LABEL;
 
 
 function TimetablePanel({
@@ -494,6 +490,7 @@ export function SearchPage() {
   const [selectedMajorType, setSelectedMajorType] = useState<string>('전체');
   const [selectedTheme, setSelectedTheme] = useState<string>('all');
   const [selectedDepartment, setSelectedDepartment] = useState('전체');
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>(['전체']);
   const [allCourses, setAllCourses] = useState<SearchResultItem[]>([]);
   const [courses, setCourses] = useState<SearchResultItem[]>([]);
   const [expandedSubjects, setExpandedSubjects] = useState<string[]>([]);
@@ -528,6 +525,19 @@ export function SearchPage() {
 
   useEffect(() => {
     setCartIds(loadTimetableCartIds());
+  }, []);
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const results = await courseService.getDepartments();
+        setDepartmentOptions(['전체', ...results]);
+      } catch (error) {
+        console.error('Failed to fetch departments', error);
+      }
+    };
+
+    fetchDepartments();
   }, []);
 
   useEffect(() => {
@@ -752,7 +762,7 @@ export function SearchPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {departments.map((department) => (
+                              {departmentOptions.map((department) => (
                                 <SelectItem key={department} value={department}>
                                   {department}
                                 </SelectItem>

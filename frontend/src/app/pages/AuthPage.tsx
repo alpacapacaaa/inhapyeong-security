@@ -4,8 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { departments } from '../data/mockData';
-import { EMAIL_PENDING_KEY, EMAIL_VERIFIED_KEY, SIGNUP_DRAFT_KEY, userService } from '../api/api';
+import { EMAIL_PENDING_KEY, EMAIL_VERIFIED_KEY, SIGNUP_DRAFT_KEY, courseService, userService } from '../api/api';
 import { toast } from 'sonner';
 import { ArrowRight, CheckCircle2, GraduationCap, Loader2, Lock, Mail } from 'lucide-react';
 
@@ -92,6 +91,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
   const [nickname, setNickname] = useState(initialSignupDraft.nickname);
   const [department, setDepartment] = useState(initialSignupDraft.department);
   const [phone, setPhone] = useState(initialSignupDraft.phone);
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const [isEmailVerified, setIsEmailVerified] = useState(initialEmailVerified);
@@ -133,6 +133,19 @@ export function AuthPage({ onLogin }: AuthPageProps) {
     setSignupStep(1);
     setSignupPasswordTouched(false);
   };
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const results = await courseService.getDepartments();
+        setDepartmentOptions(results);
+      } catch (error) {
+        console.error('Failed to fetch departments', error);
+      }
+    };
+
+    fetchDepartments();
+  }, []);
 
   useEffect(() => {
     if (!isSignup) {
@@ -736,7 +749,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
                           <SelectValue placeholder="학과를 선택해주세요" />
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px] rounded-2xl shadow-xl border-slate-200">
-                          {departments.filter((d) => d !== '전체').map((dept) => (
+                          {departmentOptions.map((dept) => (
                             <SelectItem key={dept} value={dept} className="font-medium">
                               {dept}
                             </SelectItem>

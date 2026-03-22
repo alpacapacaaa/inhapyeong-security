@@ -12,9 +12,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { userService, reviewService } from '../api/api';
+import { courseService, userService, reviewService } from '../api/api';
 import { User, Review, PointHistory, Inquiry, Notice } from '../types/types';
-import { departments } from '../data/mockData';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -41,6 +40,7 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
   const [userReviews, setUserReviews] = useState<Review[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // UI state
@@ -74,6 +74,19 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
   const [deletePw, setDeletePw] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const results = await courseService.getDepartments();
+        setDepartmentOptions(results);
+      } catch (error) {
+        console.error('Failed to fetch departments', error);
+      }
+    };
+
+    fetchDepartments();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -641,10 +654,10 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                         <p className="text-xs text-gray-400 font-bold">학과</p>
                         {editField === 'department' ? (
                           <div className="flex gap-2 mt-1">
-                            <Select value={editDepartment} onValueChange={setEditDepartment}>
-                              <SelectTrigger className="h-9 rounded-lg text-sm w-44"><SelectValue placeholder="학과 선택" /></SelectTrigger>
+                              <Select value={editDepartment} onValueChange={setEditDepartment}>
+                                <SelectTrigger className="h-9 rounded-lg text-sm w-44"><SelectValue placeholder="학과 선택" /></SelectTrigger>
                               <SelectContent>
-                                {departments.filter(d => d !== '전체').map(dept => (
+                                {departmentOptions.map(dept => (
                                   <SelectItem key={dept} value={dept} className="text-sm">{dept}</SelectItem>
                                 ))}
                               </SelectContent>

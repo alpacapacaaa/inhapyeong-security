@@ -3,6 +3,7 @@ export interface Course {
   name: string;
   professor: string;
   department: string;
+  semester?: string;
   credits?: number;
   section?: string;
   rating: number;
