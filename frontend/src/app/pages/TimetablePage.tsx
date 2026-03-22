@@ -7,6 +7,8 @@ import { Card, CardContent } from '../components/ui/card';
 import { StarRating } from '../components/StarRating';
 import { toast } from 'sonner';
 import {
+  formatPeriodRange,
+  formatPeriodTime,
   loadActiveTimetablePlanKey,
   loadTimetableCartIds,
   loadTimetablePlanSelections,
@@ -16,7 +18,6 @@ import {
   saveTimetablePlanThemeAssignments,
   saveSelectedTimetableIds,
   saveTimetableCartIds,
-  TIMETABLE_BY_COURSE_ID,
   TIMETABLE_DAYS,
   TIMETABLE_CART_STORAGE_KEY,
   TIMETABLE_PLAN_KEYS,
@@ -27,11 +28,13 @@ import {
   TimetablePlanKey,
   TimetablePlanSelections,
   TimetablePlanThemeAssignments,
+  TimetableSlot,
 } from '../data/timetableData';
 import { Course } from '../types/types';
+import { getCourseSlots } from '../lib/timetableSlots';
 
 type TimetableCourse = Course & {
-  slots: typeof TIMETABLE_BY_COURSE_ID[string];
+  slots: TimetableSlot[];
 };
 
 type BlockTheme = {
@@ -132,12 +135,6 @@ const BLOCK_THEMES: BlockTheme[] = [
     glow: 'rgba(189,216,210,0.08)',
   },
 ];
-
-const formatSlotTime = (startPeriod: number, endPeriod: number) => {
-  const startHour = String(8 + startPeriod).padStart(2, '0');
-  const endHour = String(9 + endPeriod).padStart(2, '0');
-  return `${startHour}:00-${endHour}:00`;
-};
 
 export function TimetablePage() {
   const [allCourses, setAllCourses] = useState<Course[]>([]);
@@ -272,7 +269,7 @@ export function TimetablePage() {
         .filter((course) => cartIds.includes(course.id))
         .map((course) => ({
           ...course,
-          slots: TIMETABLE_BY_COURSE_ID[course.id] ?? [],
+          slots: getCourseSlots(course),
         }))
         .sort((a, b) => {
           const aPlaced = selectedIds.includes(a.id);
@@ -432,11 +429,10 @@ export function TimetablePage() {
   const displayedPeriods = useMemo(
     () =>
       Array.from({ length: latestScheduledPeriod }, (_, index) => {
-        const hour = 9 + index;
         return {
           period: index + 1,
           label: `${index + 1}교시`,
-          time: `${String(hour).padStart(2, '0')}:00`,
+          time: formatPeriodTime(index + 1),
         };
       }),
     [latestScheduledPeriod],
@@ -464,20 +460,23 @@ export function TimetablePage() {
   });
 
   const hasPlacementConflict = (courseId: string, baseSelectedIds = selectedIds) => {
-    const nextSlots = TIMETABLE_BY_COURSE_ID[courseId] ?? [];
+    const nextCourse = cartCourses.find((course) => course.id === courseId) ?? allCourses.find((course) => course.id === courseId);
+    const nextSlots = nextCourse ? getCourseSlots(nextCourse) : [];
     const compareIds = baseSelectedIds.filter((id) => id !== courseId);
 
-    return compareIds.some((selectedId) =>
-      (TIMETABLE_BY_COURSE_ID[selectedId] ?? []).some(
-        (placed) =>
-          nextSlots.some(
-            (slot) =>
-              placed.day === slot.day &&
-              slot.startPeriod <= placed.endPeriod &&
-              placed.startPeriod <= slot.endPeriod,
-          ),
-      ),
-    );
+    return compareIds.some((selectedId) => {
+      const selectedCourse = cartCourses.find((course) => course.id === selectedId) ?? allCourses.find((course) => course.id === selectedId);
+      const placedSlots = selectedCourse ? getCourseSlots(selectedCourse) : [];
+
+      return placedSlots.some((placed) =>
+        nextSlots.some(
+          (slot) =>
+            placed.day === slot.day &&
+            slot.startPeriod <= placed.endPeriod &&
+            placed.startPeriod <= slot.endPeriod,
+        ),
+      );
+    });
   };
 
   const conflictingCourseIds = useMemo(
@@ -810,7 +809,7 @@ export function TimetablePage() {
                               key={`${course.id}-${slot.day}-${slot.startPeriod}`}
                               className={`rounded-full px-2 py-1 text-[10px] font-bold ${slotClassName}`}
                             >
-                              {slot.day} {formatSlotTime(slot.startPeriod, slot.endPeriod)}
+                              {slot.day} {formatPeriodRange(slot.startPeriod, slot.endPeriod)}
                             </span>
                           ))}
                         </div>
@@ -1012,9 +1011,7 @@ export function TimetablePage() {
                             >
                               <div className="relative z-10 flex h-full flex-col p-2">
                                 <p className="line-clamp-2 break-keep text-[13px] font-black leading-[1.2] tracking-[-0.03em]">{entry.courseName}</p>
-                                {entry.section ? (
-                                  <p className="mt-1 line-clamp-1 text-[10px] font-semibold opacity-70">{entry.section}분반</p>
-                                ) : null}
+                                <p className="mt-1 line-clamp-1 text-[10px] font-semibold opacity-70">{entry.professor}</p>
                                 <p className="mt-auto line-clamp-1 text-[11px] font-medium opacity-75">{entry.location}</p>
                               </div>
                             </div>

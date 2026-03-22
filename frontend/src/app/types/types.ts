@@ -1,3 +1,10 @@
+export interface CourseSlot {
+  day: '월' | '화' | '수' | '목' | '금';
+  startPeriod: number;
+  endPeriod: number;
+  location?: string | null;
+}
+
 export interface Course {
   id: string;
   name: string;
@@ -15,6 +22,7 @@ export interface Course {
   category: '전공' | '교양';
   type: string; // 전공필수, 전공선택, 핵심교양, 기초교양 등
   year?: number; // 1, 2, 3, 4학년
+  slots?: CourseSlot[];
 }
 
 export interface Review {

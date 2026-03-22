@@ -1,14 +1,11 @@
+import type { CourseSlot } from '../types/types';
+
 export type TimetableDay = '월' | '화' | '수' | '목' | '금';
 export type TimetablePlanKey = 'A' | 'B' | 'C';
 export type TimetablePlanSelections = Record<TimetablePlanKey, string[]>;
 export type TimetablePlanThemeAssignments = Record<TimetablePlanKey, Record<string, number>>;
 
-export type TimetableSlot = {
-  day: TimetableDay;
-  startPeriod: number;
-  endPeriod: number;
-  location: string;
-};
+export type TimetableSlot = CourseSlot;
 
 export const TIMETABLE_CART_STORAGE_KEY = 'timetable_cart_courses';
 export const TIMETABLE_SELECTED_STORAGE_KEY = 'timetable_selected_courses';
@@ -22,20 +19,43 @@ export const TIMETABLE_PLAN_KEYS: TimetablePlanKey[] = ['A', 'B', 'C'];
 
 export const PERIODS = [
   { period: 1, label: '1교시', time: '09:00' },
-  { period: 2, label: '2교시', time: '10:00' },
-  { period: 3, label: '3교시', time: '11:00' },
-  { period: 4, label: '4교시', time: '12:00' },
-  { period: 5, label: '5교시', time: '13:00' },
-  { period: 6, label: '6교시', time: '14:00' },
-  { period: 7, label: '7교시', time: '15:00' },
-  { period: 8, label: '8교시', time: '16:00' },
-  { period: 9, label: '9교시', time: '17:00' },
-  { period: 10, label: '10교시', time: '18:00' },
-  { period: 11, label: '11교시', time: '19:00' },
-  { period: 12, label: '12교시', time: '20:00' },
-  { period: 13, label: '13교시', time: '21:00' },
-  { period: 14, label: '14교시', time: '22:00' },
+  { period: 2, label: '2교시', time: '09:30' },
+  { period: 3, label: '3교시', time: '10:00' },
+  { period: 4, label: '4교시', time: '10:30' },
+  { period: 5, label: '5교시', time: '11:00' },
+  { period: 6, label: '6교시', time: '11:30' },
+  { period: 7, label: '7교시', time: '12:00' },
+  { period: 8, label: '8교시', time: '12:30' },
+  { period: 9, label: '9교시', time: '13:00' },
+  { period: 10, label: '10교시', time: '13:30' },
+  { period: 11, label: '11교시', time: '14:00' },
+  { period: 12, label: '12교시', time: '14:30' },
+  { period: 13, label: '13교시', time: '15:00' },
+  { period: 14, label: '14교시', time: '15:30' },
 ];
+
+const PERIOD_START_HOUR = 9;
+const PERIOD_MINUTE_STEP = 30;
+
+const padTime = (value: number) => String(value).padStart(2, '0');
+
+export const getPeriodStartMinutes = (period: number) =>
+  PERIOD_START_HOUR * 60 + (period - 1) * PERIOD_MINUTE_STEP;
+
+export const formatMinutesAsTime = (totalMinutes: number) => {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${padTime(hours)}:${padTime(minutes)}`;
+};
+
+export const formatPeriodTime = (period: number) =>
+  formatMinutesAsTime(getPeriodStartMinutes(period));
+
+export const formatPeriodRange = (startPeriod: number, endPeriod: number) => {
+  const start = getPeriodStartMinutes(startPeriod);
+  const end = getPeriodStartMinutes(endPeriod) + PERIOD_MINUTE_STEP;
+  return `${formatMinutesAsTime(start)}-${formatMinutesAsTime(end)}`;
+};
 
 export const TIMETABLE_BY_COURSE_ID: Record<string, TimetableSlot[]> = {
   '1': [

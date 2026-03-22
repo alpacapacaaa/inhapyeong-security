@@ -21,6 +21,20 @@ const getAverageNumericScore = (reviews: Review[], key: keyof Review, fallback: 
 
 export function useCourseStats(course: Course, reviews: Review[]) {
     return useMemo(() => {
+        const isMajor = course.category === '전공';
+        const statsLabels = isMajor
+            ? ['시험 난도', '강의력', '학점 비율', '과제량', '선수지식', '전공 심화도']
+            : ['시험 난도', '시간 투자', '학점 비율', '과제량', '출석체크', '족보 유효도'];
+
+        if (reviews.length === 0) {
+            return {
+                overallRating: course.rating ?? 0,
+                statsData: [0, 0, 0, 0, 0, 0],
+                statsLabels,
+                isMajor,
+            };
+        }
+
         const overallRating = reviews.length > 0
             ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length)
             : course.rating;
@@ -41,15 +55,9 @@ export function useCourseStats(course: Course, reviews: Review[]) {
         const timeInvestScore = getAverageNumericScore(reviews, 'timeInvestScore', Math.min(5, Math.max(1, (fbWorkScore * 0.5 + fbDiffScore * 0.3 + fbAttScore * 0.2))));
         const pastExamScore = getAverageNumericScore(reviews, 'pastExamScore', Math.min(5, Math.max(1, (6 - fbDiffScore) * 0.6 + fbGradScore * 0.4)));
 
-        const isMajor = course.category === '전공';
-
         const statsData = isMajor
             ? [diffScore, teachingScore, gradScore, workScore, prerequisiteScore, depthScore]
             : [diffScore, timeInvestScore, gradScore, workScore, attScore, pastExamScore];
-
-        const statsLabels = isMajor
-            ? ['시험 난도', '강의력', '학점 비율', '과제량', '선수지식', '전공 심화도']
-            : ['시험 난도', '시간 투자', '학점 비율', '과제량', '출석체크', '족보 유효도'];
 
         return {
             overallRating,
