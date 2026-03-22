@@ -1,5 +1,5 @@
 import { Course, Review, User, PointHistory, Inquiry, Notice, CreateReviewInput } from '../types/types';
-import { mockCourses, mockReviews, mockUser, mockPointHistory, mockNotices, mockInquiries } from '../data/mockData';
+import { mockNotices, mockInquiries } from '../data/mockData';
 
 // Simulate API delay
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -32,6 +32,14 @@ const AUTH_USER_KEY = 'auth_user';
 export const EMAIL_VERIFIED_KEY = 'email_verified';
 export const EMAIL_PENDING_KEY = 'email_pending';
 export const SIGNUP_DRAFT_KEY = 'signup_draft';
+const DEFAULT_USER_TEMPLATE: User = {
+  id: '',
+  email: '',
+  nickname: '',
+  department: '컴퓨터공학과',
+  points: 0,
+  hasPass: false,
+};
 
 const getStoredAuthToken = () => {
   if (typeof window === 'undefined') {
@@ -46,6 +54,66 @@ interface AuthResponse {
   nickname: string;
   points: number;
 }
+
+interface CourseResponseDto {
+  id: number;
+  name: string;
+  professor: string;
+  department: string;
+  credits?: number;
+  semester?: string;
+  rating: number;
+  reviewCount: number;
+  category: string;
+  type: string;
+  difficulty?: string;
+  workload?: string;
+  attendance?: string;
+  grading?: string;
+}
+
+interface ReviewResponseDto {
+  id: number;
+  courseId: number;
+  courseName: string;
+  professorName: string;
+  semester: string;
+  rating: number;
+  difficulty: string;
+  workload: string;
+  attendance: string;
+  grading: string;
+  content: string;
+  likes: number;
+  createdAt: string;
+  isAnonymous: boolean;
+  examTypes?: string[];
+  assignmentType?: string;
+  textbook?: string;
+  oneLineTip?: string;
+  examInfo?: string;
+  examKeywords?: string[];
+  recommendFor?: string[];
+  notRecommendFor?: string[];
+  diffScore?: number;
+  teachingScore?: number;
+  gradScore?: number;
+  workScore?: number;
+  prerequisiteScore?: number;
+  depthScore?: number;
+  timeInvestScore?: number;
+  attScore?: number;
+  pastExamScore?: number;
+}
+
+interface PointHistoryResponseDto {
+  id: number;
+  date: string;
+  description: string;
+  points: number;
+}
+
+const STRUCTURED_EXAM_INFO_PREFIX = '__INHA_EVAL_EXAM__:';
 
 interface SignupPayload {
   email: string;
@@ -95,6 +163,126 @@ const parseErrorMessage = (data: unknown): string => {
   const firstMessage = Object.values(record).find((value) => typeof value === 'string');
   return typeof firstMessage === 'string' ? firstMessage : '요청 처리 중 오류가 발생했습니다.';
 };
+
+const normalizeDifficulty = (value?: string): Course['difficulty'] => {
+  if (value === 'easy' || value === 'medium' || value === 'hard') return value;
+  return 'medium';
+};
+
+const normalizeWorkload = (value?: string): Course['workload'] => {
+  if (value === 'light' || value === 'medium' || value === 'heavy') return value;
+  return 'medium';
+};
+
+const normalizeAttendance = (value?: string): Course['attendance'] => {
+  if (value === 'strict' || value === 'medium' || value === 'flexible') return value;
+  return 'medium';
+};
+
+const normalizeGrading = (value?: string): Course['grading'] => {
+  if (value === 'generous' || value === 'medium' || value === 'strict') return value;
+  return 'medium';
+};
+
+const parseStructuredExamInfo = (examInfo?: string) => {
+  if (!examInfo || !examInfo.startsWith(STRUCTURED_EXAM_INFO_PREFIX)) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(examInfo.slice(STRUCTURED_EXAM_INFO_PREFIX.length)) as {
+      pastExamHelpfulness?: string;
+      scopePredictability?: string;
+      studyResources?: string[];
+      examPrepTip?: string;
+    };
+  } catch {
+    return null;
+  }
+};
+
+const encodeStructuredExamInfo = (review: Pick<CreateReviewInput, 'pastExamHelpfulness' | 'scopePredictability' | 'studyResources' | 'examPrepTip'>) => {
+  const hasStructuredInfo = Boolean(review.pastExamHelpfulness) ||
+    Boolean(review.scopePredictability) ||
+    (review.studyResources?.length ?? 0) > 0 ||
+    Boolean(review.examPrepTip?.trim());
+
+  if (!hasStructuredInfo) {
+    return undefined;
+  }
+
+  return `${STRUCTURED_EXAM_INFO_PREFIX}${JSON.stringify({
+    pastExamHelpfulness: review.pastExamHelpfulness,
+    scopePredictability: review.scopePredictability,
+    studyResources: review.studyResources ?? [],
+    examPrepTip: review.examPrepTip?.trim() || '',
+  })}`;
+};
+
+const mapCourseResponse = (course: CourseResponseDto): Course => ({
+  id: String(course.id),
+  name: course.name,
+  professor: course.professor,
+  department: course.department,
+  credits: course.credits,
+  rating: course.rating ?? 0,
+  reviewCount: course.reviewCount ?? 0,
+  difficulty: normalizeDifficulty(course.difficulty),
+  workload: normalizeWorkload(course.workload),
+  attendance: normalizeAttendance(course.attendance),
+  grading: normalizeGrading(course.grading),
+  category: course.category === '전공' ? '전공' : '교양',
+  type: course.type ?? '',
+});
+
+const mapReviewResponse = (review: ReviewResponseDto): Review => {
+  const structuredExamInfo = parseStructuredExamInfo(review.examInfo);
+
+  return {
+    id: String(review.id),
+    courseId: String(review.courseId),
+    courseName: review.courseName,
+    professorName: review.professorName,
+    semester: review.semester,
+    rating: review.rating ?? 0,
+    difficulty: normalizeDifficulty(review.difficulty),
+    workload: normalizeWorkload(review.workload),
+    attendance: normalizeAttendance(review.attendance),
+    grading: normalizeGrading(review.grading),
+    content: review.content,
+    likes: review.likes ?? 0,
+    createdAt: new Date(review.createdAt),
+    isAnonymous: review.isAnonymous,
+    examTypes: review.examTypes ?? [],
+    assignmentType: review.assignmentType,
+    textbook: review.textbook,
+    oneLineTip: review.oneLineTip,
+    examInfo: review.examInfo,
+    examKeywords: review.examKeywords ?? [],
+    pastExamHelpfulness: structuredExamInfo?.pastExamHelpfulness,
+    scopePredictability: structuredExamInfo?.scopePredictability,
+    studyResources: structuredExamInfo?.studyResources ?? review.examKeywords ?? [],
+    examPrepTip: structuredExamInfo?.examPrepTip ?? review.oneLineTip,
+    recommendFor: review.recommendFor ?? [],
+    notRecommendFor: review.notRecommendFor ?? [],
+    diffScore: review.diffScore,
+    teachingScore: review.teachingScore,
+    gradScore: review.gradScore,
+    workScore: review.workScore,
+    prerequisiteScore: review.prerequisiteScore,
+    depthScore: review.depthScore,
+    timeInvestScore: review.timeInvestScore,
+    attScore: review.attScore,
+    pastExamScore: review.pastExamScore,
+  };
+};
+
+const mapPointHistoryResponse = (history: PointHistoryResponseDto): PointHistory => ({
+  id: String(history.id),
+  date: new Date(history.date),
+  description: history.description,
+  points: history.points,
+});
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const authToken = getStoredAuthToken();
@@ -157,19 +345,19 @@ const buildSessionUser = (
   auth: AuthResponse,
   overrides: Partial<Pick<User, 'email' | 'department' | 'hasPass' | 'passExpiryDate'>> = {},
 ): User => ({
-  ...mockUser,
+  ...DEFAULT_USER_TEMPLATE,
   ...overrides,
-  id: overrides.email ?? mockUser.id,
-  email: overrides.email ?? mockUser.email,
+  id: overrides.email ?? DEFAULT_USER_TEMPLATE.id,
+  email: overrides.email ?? DEFAULT_USER_TEMPLATE.email,
   nickname: auth.nickname,
-  department: overrides.department ?? mockUser.department,
+  department: overrides.department ?? DEFAULT_USER_TEMPLATE.department,
   points: auth.points,
   hasPass: overrides.hasPass ?? false,
   passExpiryDate: overrides.passExpiryDate,
 });
 
 const buildMockSessionUser = (account: MockAuthAccount): User => ({
-  ...mockUser,
+  ...DEFAULT_USER_TEMPLATE,
   id: account.email,
   email: account.email,
   nickname: account.nickname,
@@ -179,47 +367,48 @@ const buildMockSessionUser = (account: MockAuthAccount): User => ({
   passExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
 });
 
-// In-memory storage for the session (so updates work locally)
-let courses = [...mockCourses];
-let reviews = [...mockReviews];
-let currentUser = { ...mockUser };
-let pointHistory = [...mockPointHistory];
+const requireCurrentUser = (): User => {
+  if (!currentUser) {
+    throw new Error('로그인이 필요합니다.');
+  }
+
+  return currentUser;
+};
+
+let currentUser: User | null = null;
+let pointHistory: PointHistory[] = [];
 let inquiries = [...mockInquiries];
 let notices = [...mockNotices];
 
 export const courseService = {
   getAllCourses: async (): Promise<Course[]> => {
-    await delay(300);
-    return courses;
+    const results = await apiRequest<CourseResponseDto[]>('/api/courses');
+    return results.map(mapCourseResponse);
   },
 
   getCourseById: async (id: string): Promise<Course | undefined> => {
-    await delay(200);
-    return courses.find((c) => c.id === id);
+    const result = await apiRequest<CourseResponseDto>(`/api/courses/${id}`);
+    return mapCourseResponse(result);
   },
 
   searchCourses: async (query: string, department?: string, semester?: string): Promise<Course[]> => {
-    await delay(300);
-    const lowerQuery = query.toLowerCase();
-    return courses.filter(
-      (c) =>
-        (c.name.toLowerCase().includes(lowerQuery) ||
-          c.professor.toLowerCase().includes(lowerQuery) ||
-          c.department.toLowerCase().includes(lowerQuery)) &&
-        (!department || department === '전체' || c.department === department)
-    );
+    const params = new URLSearchParams();
+    if (query) params.set('query', query);
+    if (department && department !== '전체') params.set('department', department);
+    if (semester && semester !== '전체') params.set('semester', semester);
+
+    const searchPath = params.toString() ? `/api/courses/search?${params.toString()}` : '/api/courses/search';
+    const results = await apiRequest<CourseResponseDto[]>(searchPath);
+    return results.map(mapCourseResponse);
   },
 
   getHoneyGE: async (): Promise<Course[]> => {
-    await delay(300);
-    return courses
-      .filter((c) => c.category === '교양' && (c.difficulty === 'easy' || c.rating >= 4.0))
-      .sort((a, b) => b.rating - a.rating)
-      .slice(0, 3);
+    const results = await apiRequest<CourseResponseDto[]>('/api/courses/honey-ge');
+    return results.map(mapCourseResponse);
   },
 
   getMajorRecommended: async (department: string): Promise<Course[]> => {
-    await delay(300);
+    const courses = await courseService.getAllCourses();
     return courses
       .filter((c) => c.department === department && c.category === '전공')
       .sort((a, b) => b.rating - a.rating)
@@ -229,79 +418,64 @@ export const courseService = {
 
 export const reviewService = {
   getReviewsByCourseId: async (courseId: string): Promise<Review[]> => {
-    await delay(300);
-    return reviews.filter((r) => r.courseId === courseId);
+    const results = await apiRequest<ReviewResponseDto[]>(`/api/reviews/course/${courseId}`);
+    return results.map(mapReviewResponse);
   },
 
-  getReviewsByUserId: async (userId: string): Promise<Review[]> => {
-    await delay(300);
-    // Since mock reviews don't have userId, we'll assume the current user is the author of all of them for now
-    // or better, just return a subset or add userId to mock reviews. 
-    // The current mockReviews don't have userId. I should probably add it or filter assuming ownership.
-    // For now, let's just return all reviews as if the user wrote them (or the first few).
-    // Actually, looking at mockReviews, they don't have author ID.
-    // Let's just return the first 3 for demo purposes, as MyPage used slice(0, 3).
-    return reviews.slice(0, 3);
+  getReviewsByUserId: async (_userId: string): Promise<Review[]> => {
+    const results = await apiRequest<ReviewResponseDto[]>('/api/reviews/my');
+    return results.map(mapReviewResponse);
   },
 
   createReview: async (review: CreateReviewInput): Promise<Review> => {
-    await delay(500);
-    const course = courses.find(c => c.id === review.courseId);
+    const structuredExamInfo = encodeStructuredExamInfo(review);
 
-    const newReview: Review = {
+    const reviewId = await apiRequest<number>('/api/reviews', {
+      method: 'POST',
+      body: JSON.stringify({
+        courseId: Number(review.courseId),
+        semester: review.semester,
+        rating: review.rating,
+        difficulty: review.difficulty,
+        workload: review.workload,
+        attendance: review.attendance,
+        grading: review.grading,
+        content: review.content,
+        isAnonymous: review.isAnonymous,
+        examTypes: review.examTypes ?? [],
+        assignmentType: review.assignmentType,
+        textbook: review.textbook,
+        oneLineTip: review.examPrepTip?.trim() || undefined,
+        examInfo: structuredExamInfo,
+        examKeywords: review.studyResources ?? [],
+        recommendFor: review.recommendFor ?? [],
+        notRecommendFor: review.notRecommendFor ?? [],
+        diffScore: review.diffScore,
+        teachingScore: review.teachingScore,
+        gradScore: review.gradScore,
+        workScore: review.workScore,
+        prerequisiteScore: review.prerequisiteScore,
+        depthScore: review.depthScore,
+        timeInvestScore: review.timeInvestScore,
+        attScore: review.attScore,
+        pastExamScore: review.pastExamScore,
+      }),
+    });
+
+    return {
       ...review,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date(),
+      id: String(reviewId),
+      courseName: '',
+      professorName: '',
       likes: 0,
-      courseName: course?.name || '',
-      professorName: course?.professor || '',
+      createdAt: new Date(),
     };
-
-    reviews = [newReview, ...reviews];
-
-    // Update course stats
-    if (course) {
-      const courseReviews = reviews.filter(r => r.courseId === review.courseId);
-      const avgRating = courseReviews.reduce((sum, r) => sum + r.rating, 0) / courseReviews.length;
-
-      const updatedCourse = {
-        ...course,
-        reviewCount: courseReviews.length,
-        rating: avgRating
-      };
-
-      courses = courses.map(c => c.id === course.id ? updatedCourse : c);
-    }
-
-    return newReview;
   },
 
   deleteReview: async (reviewId: string): Promise<void> => {
-    await delay(300);
-
-    const reviewToDelete = reviews.find((review) => review.id === reviewId);
-    if (!reviewToDelete) {
-      throw new Error('삭제할 강의평을 찾을 수 없습니다.');
-    }
-
-    reviews = reviews.filter((review) => review.id !== reviewId);
-
-    const courseReviews = reviews.filter((review) => review.courseId === reviewToDelete.courseId);
-    const updatedReviewCount = courseReviews.length;
-    const updatedRating =
-      updatedReviewCount > 0
-        ? courseReviews.reduce((sum, review) => sum + review.rating, 0) / updatedReviewCount
-        : 0;
-
-    courses = courses.map((course) =>
-      course.id === reviewToDelete.courseId
-        ? {
-            ...course,
-            reviewCount: updatedReviewCount,
-            rating: updatedReviewCount > 0 ? updatedRating : course.rating,
-          }
-        : course,
-    );
+    await apiRequest<void>(`/api/reviews/${reviewId}`, {
+      method: 'DELETE',
+    });
   },
 };
 
@@ -348,6 +522,7 @@ export const userService = {
 
   logout: async (): Promise<void> => {
     clearAuthSession();
+    currentUser = null;
   },
 
   signup: async (payload: SignupPayload): Promise<User> => {
@@ -416,13 +591,15 @@ export const userService = {
 
   purchasePass: async (): Promise<User> => {
     await delay(400);
-    if (currentUser.points < 50) {
+    const user = requireCurrentUser();
+
+    if (user.points < 50) {
       throw new Error('포인트가 부족합니다.');
     }
 
     currentUser = {
-      ...currentUser,
-      points: currentUser.points - 50,
+      ...user,
+      points: user.points - 50,
       hasPass: true,
       passExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
     };
@@ -436,14 +613,16 @@ export const userService = {
     };
     pointHistory = [history, ...pointHistory];
 
-    return currentUser;
+    return requireCurrentUser();
   },
 
   addPoints: async (amount: number, description: string): Promise<User> => {
     await delay(300);
+    const user = requireCurrentUser();
+
     currentUser = {
-      ...currentUser,
-      points: currentUser.points + amount,
+      ...user,
+      points: user.points + amount,
     };
 
     const history: PointHistory = {
@@ -454,22 +633,25 @@ export const userService = {
     };
     pointHistory = [history, ...pointHistory];
 
-    return currentUser;
+    return requireCurrentUser();
   },
 
   getPointHistory: async (): Promise<PointHistory[]> => {
-    await delay(300);
+    const results = await apiRequest<PointHistoryResponseDto[]>('/api/points/history');
+    pointHistory = results.map(mapPointHistoryResponse);
     return pointHistory;
   },
 
   updateProfile: async (data: { nickname?: string; department?: string }): Promise<User> => {
     await delay(400);
+    const user = requireCurrentUser();
+
     currentUser = {
-      ...currentUser,
+      ...user,
       ...(data.nickname && { nickname: data.nickname }),
       ...(data.department && { department: data.department }),
     };
-    return currentUser;
+    return requireCurrentUser();
   },
 
   changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
@@ -490,7 +672,7 @@ export const userService = {
     }
     // Phone is stored conceptually (not in User type currently, but we accept it)
     console.log(`Phone changed to ${newPhone}`);
-    return currentUser;
+    return requireCurrentUser();
   },
 
   deleteAccount: async (password: string): Promise<void> => {
@@ -499,8 +681,7 @@ export const userService = {
       throw new Error('비밀번호가 틀렸습니다.');
     }
     clearAuthSession();
-    // Reset to initial state
-    currentUser = { ...mockUser };
+    currentUser = null;
   },
 
   // --- Inquiry & Notice ---

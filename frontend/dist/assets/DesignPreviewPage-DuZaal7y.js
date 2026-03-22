@@ -1,4 +1,4 @@
-import{i as c,r as h,j as e,S as f}from"./index-DhjMYeTm.js";import{H as b}from"./heart-CUeVupki.js";import{S as g}from"./shopping-bag-C3gBbyWQ.js";import{S as j}from"./star-CeAsy7yl.js";import{C as u}from"./chevron-right-Cskxbxk_.js";/**
+import{i as c,r as h,j as e,S as f}from"./index-DErp22hx.js";import{H as b}from"./heart-DkOUbHk8.js";import{S as g}from"./shopping-bag-5ZDbPhDc.js";import{S as j}from"./star-DY6HQdEm.js";import{C as u}from"./chevron-right-DhJ-RLP1.js";/**
  * @license lucide-react v0.487.0 - ISC
  *
  * This source code is licensed under the ISC license.
