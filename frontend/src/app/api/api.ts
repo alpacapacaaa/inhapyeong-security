@@ -1,8 +1,4 @@
 import { Course, CourseSlot, Review, User, PointHistory, Inquiry, Notice, CreateReviewInput } from '../types/types';
-import { mockNotices, mockInquiries } from '../data/mockData';
-
-// Simulate API delay
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const DEFAULT_API_BASE_URL = 'http://localhost:8080';
 const PRODUCTION_API_BASE_URL = 'https://api.inha-eval.com';
@@ -26,7 +22,6 @@ const resolveApiBaseUrl = () => {
 };
 
 const API_BASE_URL = resolveApiBaseUrl();
-const USE_MOCK_AUTH = (import.meta.env.VITE_USE_MOCK_AUTH as string | undefined) === 'true';
 const AUTH_TOKEN_KEY = 'auth_token';
 const AUTH_USER_KEY = 'auth_user';
 export const EMAIL_VERIFIED_KEY = 'email_verified';
@@ -147,26 +142,6 @@ interface PasswordResetPayload {
   newPassword: string;
   newPasswordConfirm: string;
 }
-
-interface MockAuthAccount {
-  email: string;
-  password: string;
-  nickname: string;
-  department: string;
-  points: number;
-  hasPass?: boolean;
-}
-
-const MOCK_AUTH_ACCOUNTS: MockAuthAccount[] = [
-  {
-    email: 'heuka@inha.edu',
-    password: 'inha1234',
-    nickname: '강의평테스터',
-    department: '컴퓨터공학과',
-    points: 120,
-    hasPass: true,
-  },
-];
 
 const parseErrorMessage = (data: unknown): string => {
   if (!data || typeof data !== 'object') {
@@ -395,17 +370,6 @@ const buildSessionUser = (
   passExpiryDate: overrides.passExpiryDate,
 });
 
-const buildMockSessionUser = (account: MockAuthAccount): User => ({
-  ...DEFAULT_USER_TEMPLATE,
-  id: account.email,
-  email: account.email,
-  nickname: account.nickname,
-  department: account.department,
-  points: account.points,
-  hasPass: account.hasPass ?? true,
-  passExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-});
-
 const requireCurrentUser = (): User => {
   if (!currentUser) {
     throw new Error('로그인이 필요합니다.');
@@ -416,8 +380,6 @@ const requireCurrentUser = (): User => {
 
 let currentUser: User | null = null;
 let pointHistory: PointHistory[] = [];
-let inquiries = [...mockInquiries];
-let notices = [...mockNotices];
 let cachedDepartments: string[] | null = null;
 
 export const courseService = {
@@ -552,6 +514,9 @@ export const reviewService = {
 };
 
 export const userService = {
+  supportsNotices: false,
+  supportsInquiries: false,
+
   getCurrentUser: async (): Promise<User | null> => {
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     if (!token) return null;
@@ -568,21 +533,6 @@ export const userService = {
   },
 
   login: async (email: string, password?: string): Promise<User> => {
-    if (USE_MOCK_AUTH) {
-      await delay(200);
-      const account = MOCK_AUTH_ACCOUNTS.find(
-        (candidate) => candidate.email === email && candidate.password === password,
-      );
-
-      if (!account) {
-        throw new Error('목 로그인 계정이 아니거나 비밀번호가 올바르지 않습니다.');
-      }
-
-      currentUser = buildMockSessionUser(account);
-      saveAuthSession(`mock-token-${account.email}`, currentUser);
-      return currentUser;
-    }
-
     const auth = await apiRequest<AuthResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
@@ -780,24 +730,15 @@ export const userService = {
 
   // --- Inquiry & Notice ---
   submitInquiry: async (data: { category: string; title: string; content: string }): Promise<Inquiry> => {
-    await delay(500);
-    const newInquiry: Inquiry = {
-      id: Math.random().toString(36).substr(2, 9),
-      ...data,
-      status: '접수',
-      createdAt: new Date(),
-    };
-    inquiries = [newInquiry, ...inquiries];
-    return newInquiry;
+    void data;
+    throw new Error('관리자 문의 기능은 아직 백엔드와 연동되지 않았습니다.');
   },
 
   getMyInquiries: async (): Promise<Inquiry[]> => {
-    await delay(300);
-    return inquiries;
+    return [];
   },
 
   getNotices: async (): Promise<Notice[]> => {
-    await delay(300);
-    return notices;
+    return [];
   },
 };

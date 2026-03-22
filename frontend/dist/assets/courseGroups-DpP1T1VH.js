@@ -1,4 +1,4 @@
-import{h as w,r as u,j as e,C as N,B as b}from"./index-C0hDunZc.js";import{X as v}from"./x-wsSGWRQP.js";import{f as C}from"./select-NRgNdDTu.js";import{g as k,f as S}from"./timetableSlots-SizfP89l.js";import{n as j,C as $}from"./semester-Cp3DLlHK.js";/**
+import{h as w,r as u,j as e,C as N,B as b}from"./index-Sd5jz_0g.js";import{X as v}from"./x-CbmV4qxC.js";import{f as C}from"./select-BX8jpEug.js";import{g as k,f as S}from"./timetableSlots-SizfP89l.js";import{n as j,C as $}from"./semester-Cp3DLlHK.js";/**
  * @license lucide-react v0.487.0 - ISC
  *
  * This source code is licensed under the ISC license.

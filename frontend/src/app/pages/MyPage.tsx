@@ -35,6 +35,8 @@ interface MyPageProps {
 
 export function MyPage({ onAccountDeleted }: MyPageProps) {
   const navigate = useNavigate();
+  const noticeSupported = userService.supportsNotices;
+  const inquirySupported = userService.supportsInquiries;
   const [user, setUser] = useState<User | null>(null);
   const [pointHistory, setPointHistory] = useState<PointHistory[]>([]);
   const [userReviews, setUserReviews] = useState<Review[]>([]);
@@ -465,34 +467,41 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
                 )}
               </div>
               <div className="space-y-2">
-                {(showAllNotices ? notices : notices.slice(0, 2)).map((notice) => (
-                  <div
-                    key={notice.id}
-                    className={`cursor-pointer rounded-2xl border transition-all ${expandedNotice === notice.id ? 'border-amber-200 bg-amber-50/40' : 'border-[rgba(15,23,42,0.08)] bg-white hover:border-gray-200'}`}
-                    onClick={() => setExpandedNotice(prev => prev === notice.id ? null : notice.id)}
-                  >
-                    <div className="flex items-center justify-between px-4 py-3">
-                      <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                        {notice.isImportant && (
-                          <span className="bg-red-100 text-red-600 text-[10px] font-black px-1.5 py-0.5 rounded shrink-0">중요</span>
-                        )}
-                        <p className="text-sm font-semibold text-gray-800 truncate">{notice.title}</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-3">
-                        <span className="text-xs text-gray-400">{formatDate(notice.createdAt)}</span>
-                        {expandedNotice === notice.id
-                          ? <ChevronUp className="w-4 h-4 text-gray-400" />
-                          : <ChevronDown className="w-4 h-4 text-gray-400" />
-                        }
-                      </div>
-                    </div>
-                    {expandedNotice === notice.id && (
-                      <div className="px-4 pb-4 pt-1 animate-in slide-in-from-top-2 duration-200">
-                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{notice.content}</p>
-                      </div>
-                    )}
+                {!noticeSupported ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center">
+                    <p className="text-sm font-bold text-slate-600">공지사항은 아직 백엔드 연동 전입니다.</p>
+                    <p className="mt-2 text-sm text-slate-500">운영 공지 API가 준비되면 이 영역에서 바로 확인할 수 있게 연결됩니다.</p>
                   </div>
-                ))}
+                ) : (
+                  (showAllNotices ? notices : notices.slice(0, 2)).map((notice) => (
+                    <div
+                      key={notice.id}
+                      className={`cursor-pointer rounded-2xl border transition-all ${expandedNotice === notice.id ? 'border-amber-200 bg-amber-50/40' : 'border-[rgba(15,23,42,0.08)] bg-white hover:border-gray-200'}`}
+                      onClick={() => setExpandedNotice(prev => prev === notice.id ? null : notice.id)}
+                    >
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          {notice.isImportant && (
+                            <span className="bg-red-100 text-red-600 text-[10px] font-black px-1.5 py-0.5 rounded shrink-0">중요</span>
+                          )}
+                          <p className="text-sm font-semibold text-gray-800 truncate">{notice.title}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 ml-3">
+                          <span className="text-xs text-gray-400">{formatDate(notice.createdAt)}</span>
+                          {expandedNotice === notice.id
+                            ? <ChevronUp className="w-4 h-4 text-gray-400" />
+                            : <ChevronDown className="w-4 h-4 text-gray-400" />
+                          }
+                        </div>
+                      </div>
+                      {expandedNotice === notice.id && (
+                        <div className="px-4 pb-4 pt-1 animate-in slide-in-from-top-2 duration-200">
+                          <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{notice.content}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -772,84 +781,91 @@ export function MyPage({ onAccountDeleted }: MyPageProps) {
 
               {activeSection === 'inquiry' && (
                 <div className="mt-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                  {/* 문의 작성 폼 */}
-                  {showInquiryForm ? (
-                    <div className="space-y-3 rounded-[1.5rem] border border-[rgba(15,23,42,0.08)] bg-white p-5">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold text-gray-500">카테고리</Label>
-                        <Select value={inquiryCategory} onValueChange={setInquiryCategory}>
-                          <SelectTrigger className="h-10 rounded-lg"><SelectValue placeholder="문의 유형 선택" /></SelectTrigger>
-                          <SelectContent>
-                            {['버그 신고', '건의사항', '강의평 삭제 요청', '기타'].map(cat => (
-                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold text-gray-500">제목</Label>
-                        <Input value={inquiryTitle} onChange={e => setInquiryTitle(e.target.value)} placeholder="문의 제목" className="h-10 rounded-lg" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold text-gray-500">내용</Label>
-                        <textarea
-                          value={inquiryContent}
-                          onChange={e => setInquiryContent(e.target.value)}
-                          placeholder="문의 내용을 입력해주세요"
-                          rows={4}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button onClick={handleSubmitInquiry} disabled={isSaving} className="bg-indigo-600 hover:bg-indigo-700 rounded-xl h-10 px-5 font-bold text-sm">
-                          <Send className="w-4 h-4 mr-1.5" />
-                          문의 접수
-                        </Button>
-                        <Button variant="ghost" onClick={() => setShowInquiryForm(false)} className="h-10 text-gray-500 text-sm">취소</Button>
-                      </div>
+                  {!inquirySupported ? (
+                    <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center">
+                      <p className="text-sm font-bold text-slate-600">관리자 문의 기능은 아직 백엔드 연동 전입니다.</p>
+                      <p className="mt-2 text-sm text-slate-500">문의 API가 준비되면 작성과 답변 내역 확인이 이곳에서 바로 가능해집니다.</p>
                     </div>
                   ) : (
-                    <Button
-                      onClick={() => setShowInquiryForm(true)}
-                      variant="outline"
-                      className="w-full h-12 rounded-xl border-dashed border-gray-300 text-gray-500 hover:border-indigo-300 hover:text-indigo-600 font-bold"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      새 문의 작성하기
-                    </Button>
-                  )}
-
-                  {/* 기존 문의 내역 */}
-                  {inquiries.length > 0 ? (
-                    <div className="space-y-2 pt-2">
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">내 문의 내역</p>
-                      {inquiries.map(inq => (
-                        <div key={inq.id} className="rounded-[1.4rem] border border-[rgba(15,23,42,0.08)] bg-white p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold bg-gray-200 text-gray-600 px-2 py-0.5 rounded">{inq.category}</span>
-                              <span className={`text-xs font-bold px-2 py-0.5 rounded ${inq.status === '답변완료' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                                {inq.status}
-                              </span>
-                            </div>
-                            <span className="text-xs text-gray-400">{formatDate(inq.createdAt)}</span>
+                    <>
+                      {showInquiryForm ? (
+                        <div className="space-y-3 rounded-[1.5rem] border border-[rgba(15,23,42,0.08)] bg-white p-5">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-bold text-gray-500">카테고리</Label>
+                            <Select value={inquiryCategory} onValueChange={setInquiryCategory}>
+                              <SelectTrigger className="h-10 rounded-lg"><SelectValue placeholder="문의 유형 선택" /></SelectTrigger>
+                              <SelectContent>
+                                {['버그 신고', '건의사항', '강의평 삭제 요청', '기타'].map(cat => (
+                                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
-                          <p className="text-sm font-semibold text-gray-800">{inq.title}</p>
-                          <p className="text-xs text-gray-500 mt-1">{inq.content}</p>
-                          {inq.answer && (
-                            <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3">
-                              <p className="text-xs font-bold text-blue-700 mb-1">관리자 답변</p>
-                              <p className="text-xs text-blue-800">{inq.answer}</p>
-                            </div>
-                          )}
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-bold text-gray-500">제목</Label>
+                            <Input value={inquiryTitle} onChange={e => setInquiryTitle(e.target.value)} placeholder="문의 제목" className="h-10 rounded-lg" />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-bold text-gray-500">내용</Label>
+                            <textarea
+                              value={inquiryContent}
+                              onChange={e => setInquiryContent(e.target.value)}
+                              placeholder="문의 내용을 입력해주세요"
+                              rows={4}
+                              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button onClick={handleSubmitInquiry} disabled={isSaving} className="bg-indigo-600 hover:bg-indigo-700 rounded-xl h-10 px-5 font-bold text-sm">
+                              <Send className="w-4 h-4 mr-1.5" />
+                              문의 접수
+                            </Button>
+                            <Button variant="ghost" onClick={() => setShowInquiryForm(false)} className="h-10 text-gray-500 text-sm">취소</Button>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center">
-                      <p className="text-sm font-bold text-slate-600">문의 내역이 없습니다.</p>
-                      <p className="mt-2 text-sm text-slate-500">서비스 이용 중 막히는 점이 생기면 여기서 바로 관리자에게 남길 수 있습니다.</p>
-                    </div>
+                      ) : (
+                        <Button
+                          onClick={() => setShowInquiryForm(true)}
+                          variant="outline"
+                          className="w-full h-12 rounded-xl border-dashed border-gray-300 text-gray-500 hover:border-indigo-300 hover:text-indigo-600 font-bold"
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          새 문의 작성하기
+                        </Button>
+                      )}
+
+                      {inquiries.length > 0 ? (
+                        <div className="space-y-2 pt-2">
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">내 문의 내역</p>
+                          {inquiries.map(inq => (
+                            <div key={inq.id} className="rounded-[1.4rem] border border-[rgba(15,23,42,0.08)] bg-white p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold bg-gray-200 text-gray-600 px-2 py-0.5 rounded">{inq.category}</span>
+                                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${inq.status === '답변완료' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                    {inq.status}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-gray-400">{formatDate(inq.createdAt)}</span>
+                              </div>
+                              <p className="text-sm font-semibold text-gray-800">{inq.title}</p>
+                              <p className="text-xs text-gray-500 mt-1">{inq.content}</p>
+                              {inq.answer && (
+                                <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3">
+                                  <p className="text-xs font-bold text-blue-700 mb-1">관리자 답변</p>
+                                  <p className="text-xs text-blue-800">{inq.answer}</p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center">
+                          <p className="text-sm font-bold text-slate-600">문의 내역이 없습니다.</p>
+                          <p className="mt-2 text-sm text-slate-500">서비스 이용 중 막히는 점이 생기면 여기서 바로 관리자에게 남길 수 있습니다.</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
