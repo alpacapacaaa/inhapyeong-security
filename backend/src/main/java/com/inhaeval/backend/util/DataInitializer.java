@@ -4,10 +4,12 @@ import com.inhaeval.backend.domain.Course;
 import com.inhaeval.backend.repository.CourseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.seed.test-courses", havingValue = "true")
 public class DataInitializer implements CommandLineRunner {
 
     private final CourseRepository courseRepository;
@@ -22,6 +24,7 @@ public class DataInitializer implements CommandLineRunner {
                 .category("전공")
                 .type("전공필수")
                 .credits(3)
+                .section("001")
                 .semester("26-1")
                 .rating(4.5f)
                 .reviewCount(50)
@@ -35,6 +38,7 @@ public class DataInitializer implements CommandLineRunner {
                 .category("전공")
                 .type("전공필수")
                 .credits(3)
+                .section("001")
                 .semester("25-2")
                 .rating(4.2f)
                 .reviewCount(23)
@@ -48,6 +52,7 @@ public class DataInitializer implements CommandLineRunner {
                 .category("교양")
                 .type("핵심교양-1")
                 .credits(2)
+                .section("001")
                 .semester("26-1")
                 .rating(4.0f)
                 .reviewCount(120)
