@@ -19,7 +19,7 @@ public class CourseService {
 
     // 전체 강의 목록 조회
     public List<CourseResponse> getAllCourses() {
-        return courseRepository.findAll().stream()
+        return courseRepository.findAllWithSlots().stream()
                 .map(CourseResponse::from)
                 .collect(Collectors.toList());
     }
