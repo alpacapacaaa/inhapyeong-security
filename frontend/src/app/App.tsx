@@ -34,6 +34,9 @@ const TimetablePage = lazy(() =>
 const DesignPreviewPage = lazy(() =>
   import('./pages/DesignPreviewPage').then((module) => ({ default: module.DesignPreviewPage })),
 );
+const FontPreviewPage = lazy(() =>
+  import('./pages/FontPreviewPage').then((module) => ({ default: module.FontPreviewPage })),
+);
 
 function RouteLoadingFallback() {
   return (
@@ -104,6 +107,7 @@ export default function App() {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/course/:id" element={<CourseDetailPage />} />
             <Route path="/design-preview" element={<DesignPreviewPage />} />
+            <Route path="/font-preview" element={<FontPreviewPage />} />
             <Route
               path="/review/write/:courseId"
               element={
