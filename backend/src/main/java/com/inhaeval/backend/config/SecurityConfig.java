@@ -56,7 +56,9 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of(
                 "http://localhost:5173",
-                "https://inha-eval.vercel.app"
+                "https://inha-eval.vercel.app",  // 기존 vercel 주소도 남겨두는 게 안전
+                "https://inha-eval.com",
+                "https://www.inha-eval.com"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
