@@ -39,6 +39,17 @@ public class ReviewResponse {
     private List<String> recommendFor;
     private List<String> notRecommendFor;
 
+    private List<String> badges;
+    private String examMidtermInfo;
+    private String examFinalInfo;
+    private String examAssignmentInfo;
+    private String examQuizInfo;
+    private String pastExamHelpfulness;
+    private String scopePredictability;
+    private List<String> studyResources;
+    private List<String> problemStyles;
+    private String examPrepTip;
+
     // 육각형 스탯
     private Integer diffScore;
     private Integer teachingScore;
@@ -75,6 +86,16 @@ public class ReviewResponse {
                 .examKeywords(review.getExamKeywords())
                 .recommendFor(review.getRecommendFor())
                 .notRecommendFor(review.getNotRecommendFor())
+                .badges(review.getBadges())
+                .examMidtermInfo(review.getExamMidtermInfo())
+                .examFinalInfo(review.getExamFinalInfo())
+                .examAssignmentInfo(review.getExamAssignmentInfo())
+                .examQuizInfo(review.getExamQuizInfo())
+                .pastExamHelpfulness(review.getPastExamHelpfulness())
+                .scopePredictability(review.getScopePredictability())
+                .studyResources(review.getStudyResources())
+                .problemStyles(review.getProblemStyles())
+                .examPrepTip(review.getExamPrepTip())
                 .diffScore(review.getDiffScore())
                 .teachingScore(review.getTeachingScore())
                 .gradScore(review.getGradScore())
