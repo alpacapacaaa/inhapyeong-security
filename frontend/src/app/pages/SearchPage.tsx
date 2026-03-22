@@ -571,7 +571,22 @@ export function SearchPage() {
         if (query.trim()) {
           results = await courseService.searchCourses(query, selectedDepartment);
         } else {
-          results = await courseService.getAllCourses();
+          if (selectedCategory === '전체') {
+            if (selectedTheme === 'top-rated') {
+              results = await courseService.getFamousCourses();
+            } else if (selectedTheme === 'easy-credit') {
+              results = await courseService.getHoneyGE();
+            } else if (selectedTheme === 'most-reviewed') {
+              results = await courseService.getVerifiedCourses();
+            } else if (selectedTheme === 'growth') {
+              results = await courseService.getGrowthCourses();
+            } else {
+              results = await courseService.getAllCourses();
+            }
+          } else {
+            results = await courseService.getAllCourses();
+          }
+
           if (selectedDepartment !== '전체') {
             results = results.filter((course) => course.department === selectedDepartment);
           }
@@ -589,7 +604,7 @@ export function SearchPage() {
           results = results.filter((course) => selectedTypes.includes(course.type));
         }
 
-        if (selectedCategory === '전체') {
+        if (selectedCategory === '전체' && query.trim()) {
           if (selectedTheme === 'top-rated') {
             results = results.filter((course) => course.rating >= 4.3);
           } else if (selectedTheme === 'easy-credit') {
