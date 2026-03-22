@@ -316,6 +316,7 @@ export function TimetablePage() {
           courseId: course.id,
           courseName: course.name,
           professor: course.professor,
+          section: course.section,
           credits: course.credits ?? 3,
         })),
       ),
@@ -399,6 +400,7 @@ export function TimetablePage() {
             courseId: draggedCourse.id,
             courseName: draggedCourse.name,
             professor: draggedCourse.professor,
+            section: draggedCourse.section,
           }))
         : [],
     [draggedCourse],
@@ -789,7 +791,10 @@ export function TimetablePage() {
                           {course.name}
                         </p>
                         <div className={`mt-1 flex items-center gap-2 text-xs ${isPlaced ? 'text-slate-500' : 'text-slate-400'}`}>
-                          <span className="line-clamp-1 font-semibold">{course.professor}</span>
+                          <span className="line-clamp-1 font-semibold">
+                            {course.professor}
+                            {course.section ? ` · ${course.section}분반` : ''}
+                          </span>
                           <StarRating
                             value={course.rating}
                             size="sm"
@@ -1007,6 +1012,9 @@ export function TimetablePage() {
                             >
                               <div className="relative z-10 flex h-full flex-col p-2">
                                 <p className="line-clamp-2 break-keep text-[13px] font-black leading-[1.2] tracking-[-0.03em]">{entry.courseName}</p>
+                                {entry.section ? (
+                                  <p className="mt-1 line-clamp-1 text-[10px] font-semibold opacity-70">{entry.section}분반</p>
+                                ) : null}
                                 <p className="mt-auto line-clamp-1 text-[11px] font-medium opacity-75">{entry.location}</p>
                               </div>
                             </div>

@@ -61,6 +61,7 @@ interface CourseResponseDto {
   professor: string;
   department: string;
   credits?: number;
+  section?: string;
   semester?: string;
   rating: number;
   reviewCount: number;
@@ -225,6 +226,7 @@ const mapCourseResponse = (course: CourseResponseDto): Course => ({
   professor: course.professor,
   department: course.department,
   credits: course.credits,
+  section: course.section,
   rating: course.rating ?? 0,
   reviewCount: course.reviewCount ?? 0,
   difficulty: normalizeDifficulty(course.difficulty),

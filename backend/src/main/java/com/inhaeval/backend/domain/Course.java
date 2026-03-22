@@ -31,6 +31,8 @@ public class Course {
 
     private Integer credits;    // 과목 학점 (예: 3학점, 2학점 등)
 
+    private String section;     // 분반 (예: 001, 002)
+
     private String semester;    // 개설 학기 "26-1", "26-2"
 
     // 반정규화 필드 (DB가 무거워지지 않게 평점과 개수를 미리 저장해둠)

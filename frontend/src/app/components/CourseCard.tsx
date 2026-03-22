@@ -48,7 +48,7 @@ export function CourseCard({ course, showPreview = false, previewText }: CourseC
                 </p>
                 <h3 className="line-clamp-2 text-[1.02rem] font-black tracking-tight text-slate-900">{course.name}</h3>
                 <p className="mt-1 text-[12px] font-medium text-slate-500">
-                  {course.professor} 교수님 · {course.department}
+                  {course.professor} 교수님{course.section ? ` · ${course.section}분반` : ''} · {course.department}
                 </p>
               </div>
               <span className="shrink-0 rounded-full border border-[rgba(15,23,42,0.08)] bg-[#f7f9fb] px-2.5 py-1 text-[10px] font-semibold text-slate-600">
