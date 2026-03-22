@@ -30,4 +30,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     // 5. 성장형 강의 (전공 과목 중 평점 순)
     @Query("SELECT c FROM Course c WHERE c.category = '전공' ORDER BY c.rating DESC")
     List<Course> findGrowthCourses();
+
+    @Query("SELECT DISTINCT c FROM Course c LEFT JOIN FETCH c.slots")
+    List<Course> findAllWithSlots();
 }

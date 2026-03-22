@@ -1,12 +1,17 @@
 package com.inhaeval.backend.dto;
 
 import com.inhaeval.backend.domain.Course;
+import com.inhaeval.backend.domain.CourseSlot;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 @Builder
 public class CourseResponse {
+
+    private List<CourseSlotResponse> slots;
 
     private Long id;
     private String name;
@@ -39,6 +44,9 @@ public class CourseResponse {
                 .reviewCount(course.getReviewCount())
                 .category(course.getCategory())
                 .type(course.getType())
+                .slots(course.getSlots().stream()
+                        .map(CourseSlotResponse::from)
+                        .collect(Collectors.toList()))
                 .build();
     }
 }
