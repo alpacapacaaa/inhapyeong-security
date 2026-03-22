@@ -4,13 +4,42 @@ import { mockCourses, mockReviews, mockUser, mockPointHistory, mockNotices, mock
 // Simulate API delay
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8080';
+const DEFAULT_API_BASE_URL = 'http://localhost:8080';
+const PRODUCTION_API_BASE_URL = 'https://api.inha-eval.com';
+
+const resolveApiBaseUrl = () => {
+  const configuredBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+  if (configuredBaseUrl) {
+    return configuredBaseUrl.replace(/\/+$/, '');
+  }
+
+  if (typeof window === 'undefined') {
+    return DEFAULT_API_BASE_URL;
+  }
+
+  const { hostname } = window.location;
+  if (hostname === 'inha-eval.com' || hostname === 'www.inha-eval.com' || hostname === 'inha-eval.vercel.app') {
+    return PRODUCTION_API_BASE_URL;
+  }
+
+  return hostname === 'localhost' ? DEFAULT_API_BASE_URL : window.location.origin;
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
 const USE_MOCK_AUTH = (import.meta.env.VITE_USE_MOCK_AUTH as string | undefined) === 'true';
 const AUTH_TOKEN_KEY = 'auth_token';
 const AUTH_USER_KEY = 'auth_user';
 export const EMAIL_VERIFIED_KEY = 'email_verified';
 export const EMAIL_PENDING_KEY = 'email_pending';
 export const SIGNUP_DRAFT_KEY = 'signup_draft';
+
+const getStoredAuthToken = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+};
 
 interface AuthResponse {
   accessToken: string;
@@ -68,9 +97,11 @@ const parseErrorMessage = (data: unknown): string => {
 };
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const authToken = getStoredAuthToken();
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       ...(init?.headers ?? {}),
     },
     ...init,
