@@ -4,6 +4,7 @@ import { Lock, Plus, FileText, CalendarClock, ShoppingBag, BookOpen } from 'luci
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { SectionSelectDialog } from '../components/course/SectionSelectDialog';
 import { ReviewCard } from '../components/ReviewCard';
 import { courseService, reviewService, userService } from '../api/api';
 import {
@@ -11,7 +12,6 @@ import {
   loadTimetableCartIds,
   saveSelectedTimetableIds,
   saveTimetableCartIds,
-  toggleStoredId,
 } from '../data/timetableData';
 import { Course, Review, User } from '../types/types';
 import { toast } from 'sonner';
@@ -21,16 +21,26 @@ import { SyllabusModal } from '../components/course/SyllabusModal';
 import { CourseDetailSkeleton } from '../components/course/CourseSkeleton';
 import { compareSemesterLabel } from '../lib/semester';
 import { StarRating } from '../components/StarRating';
+import {
+  CourseProfessorGroup,
+  findCourseProfessorGroup,
+  findGroupSelectionInCart,
+  replaceGroupSelectionInCart,
+} from '../lib/courseGroups';
+import { buildSlotsByCourseId } from '../lib/timetableSlots';
 
 export function CourseDetailPage() {
   const { id } = useParams();
   const [course, setCourse] = useState<Course | null>(null);
+  const [courseGroup, setCourseGroup] = useState<CourseProfessorGroup | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyllabusOpen, setIsSyllabusOpen] = useState(false);
+  const [isSectionDialogOpen, setIsSectionDialogOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'latest' | 'highest' | 'lowest' | 'likes'>('latest');
   const [selectedSemester, setSelectedSemester] = useState('전체');
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [cartIds, setCartIds] = useState<string[]>([]);
 
   const availableSemesters = ['전체', ...Array.from(new Set(reviews.map((review) => review.semester))).sort(compareSemesterLabel)];
@@ -56,13 +66,35 @@ export function CourseDetailPage() {
     const fetchData = async () => {
       if (!id) return;
       try {
-        const [fetchedCourse, fetchedReviews, fetchedUser] = await Promise.all([
-          courseService.getCourseById(id),
-          reviewService.getReviewsByCourseId(id),
+        const [allCourses, fetchedUser] = await Promise.all([
+          courseService.getAllCourses(),
           userService.getCurrentUser(),
         ]);
-        setCourse(fetchedCourse || null);
-        setReviews(fetchedReviews);
+
+        const matchedGroup = findCourseProfessorGroup(allCourses, id, buildSlotsByCourseId(allCourses));
+
+        if (!matchedGroup) {
+          setCourse(null);
+          setCourseGroup(null);
+          setReviews([]);
+          setUser(fetchedUser);
+          return;
+        }
+
+        const reviewResults = await Promise.allSettled(
+          matchedGroup.courses.map((groupCourse) => reviewService.getReviewsByCourseId(groupCourse.id)),
+        );
+        const mergedReviews = Array.from(
+          new Map(
+            reviewResults
+              .flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
+              .map((review) => [review.id, review]),
+          ).values(),
+        );
+
+        setCourse(matchedGroup.primaryCourse);
+        setCourseGroup(matchedGroup);
+        setReviews(mergedReviews);
         setUser(fetchedUser);
       } catch (error) {
         console.error('Failed to fetch data', error);
@@ -76,6 +108,22 @@ export function CourseDetailPage() {
   useEffect(() => {
     setCartIds(loadTimetableCartIds());
   }, []);
+
+  useEffect(() => {
+    if (!courseGroup) {
+      setSelectedSectionId(null);
+      return;
+    }
+
+    const selectedInCart = findGroupSelectionInCart(cartIds, courseGroup);
+    const preferredSectionId = selectedInCart?.id ?? courseGroup.sections[0]?.id ?? null;
+
+    setSelectedSectionId((current) =>
+      current && courseGroup.sections.some((section) => section.id === current)
+        ? current
+        : preferredSectionId,
+    );
+  }, [cartIds, courseGroup]);
 
   if (isLoading) {
     return (
@@ -144,22 +192,73 @@ export function CourseDetailPage() {
     return 0;
   });
 
+  const activeCartSection = courseGroup ? findGroupSelectionInCart(cartIds, courseGroup) : null;
+  const activeSection = courseGroup?.sections.find((section) => section.id === selectedSectionId) ?? activeCartSection ?? courseGroup?.sections[0] ?? null;
+  const hasMultipleSections = (courseGroup?.sections.length ?? 0) > 1;
+  const reviewTargetCourseId = selectedSectionId ?? course.id;
   const reviewWriteLink = selectedSemester === '전체'
-    ? `/review/write/${course.id}`
-    : `/review/write/${course.id}?semester=${encodeURIComponent(selectedSemester)}`;
-  const isInTimetableCart = cartIds.includes(course.id);
+    ? `/review/write/${reviewTargetCourseId}`
+    : `/review/write/${reviewTargetCourseId}?semester=${encodeURIComponent(selectedSemester)}`;
+  const isInTimetableCart = activeCartSection !== null;
 
-  const handleToggleTimetableCart = () => {
-    const next = toggleStoredId(cartIds, course.id);
+  const handleConfirmSection = (nextCourseId: string) => {
+    if (!courseGroup) {
+      return;
+    }
+
+    const next = replaceGroupSelectionInCart(cartIds, courseGroup, nextCourseId);
+    setCartIds(next);
+    setSelectedSectionId(nextCourseId);
+    saveTimetableCartIds(next);
+    toast.success('선택한 분반을 시간표 장바구니에 담았습니다.');
+    setIsSectionDialogOpen(false);
+  };
+
+  const handleRemoveGroupSelection = () => {
+    if (!courseGroup) {
+      return;
+    }
+
+    const idsInGroup = new Set(courseGroup.courses.map((groupCourse) => groupCourse.id));
+    const next = cartIds.filter((savedId) => !idsInGroup.has(savedId));
     setCartIds(next);
     saveTimetableCartIds(next);
+    saveSelectedTimetableIds(loadSelectedTimetableIds().filter((savedId) => !idsInGroup.has(savedId)));
+    toast.success('시간표 장바구니에서 제거했습니다.');
+    setIsSectionDialogOpen(false);
+  };
 
-    if (!next.includes(course.id)) {
-      saveSelectedTimetableIds(loadSelectedTimetableIds().filter((savedId) => savedId !== course.id));
+  const handleTimetableCartAction = () => {
+    if (!courseGroup) {
+      return;
+    }
+
+    if (hasMultipleSections) {
+      setIsSectionDialogOpen(true);
+      return;
+    }
+
+    const onlySection = courseGroup.sections[0];
+    if (!onlySection) {
+      return;
+    }
+
+    const idsInGroup = new Set(courseGroup.courses.map((groupCourse) => groupCourse.id));
+
+    if (activeCartSection) {
+      const next = cartIds.filter((savedId) => !idsInGroup.has(savedId));
+      setCartIds(next);
+      saveTimetableCartIds(next);
+      saveSelectedTimetableIds(loadSelectedTimetableIds().filter((savedId) => !idsInGroup.has(savedId)));
       toast.success('시간표 장바구니에서 제거했습니다.');
       return;
     }
 
+    const next = replaceGroupSelectionInCart(cartIds, courseGroup, onlySection.id);
+    setCartIds(next);
+    setSelectedSectionId(onlySection.id);
+    saveTimetableCartIds(next);
+    saveSelectedTimetableIds(loadSelectedTimetableIds().filter((savedId) => !idsInGroup.has(savedId)));
     toast.success('시간표 장바구니에 담았습니다.');
   };
 
@@ -168,6 +267,15 @@ export function CourseDetailPage() {
       {isSyllabusOpen && course && (
         <SyllabusModal course={course} onClose={() => setIsSyllabusOpen(false)} />
       )}
+      <SectionSelectDialog
+        open={isSectionDialogOpen}
+        group={courseGroup}
+        currentCourseId={activeCartSection?.id ?? null}
+        preferredCourseId={activeSection?.id ?? null}
+        onClose={() => setIsSectionDialogOpen(false)}
+        onConfirm={handleConfirmSection}
+        onRemove={isInTimetableCart ? handleRemoveGroupSelection : undefined}
+      />
 
       <div className="min-h-screen">
         <div className="page-shell py-8">
@@ -186,11 +294,41 @@ export function CourseDetailPage() {
                         {course.category}
                       </span>
                       <span className="rounded-full border border-[rgba(15,23,42,0.08)] bg-[#f7fafc] px-2.5 py-1 text-[13px] text-slate-700">
-                        {course.professor} 교수님
+                        {course.professor}
                       </span>
                       <span className="text-slate-300">|</span>
                       <span className="text-slate-500 font-medium">{course.department}</span>
                     </p>
+                    {courseGroup ? (
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        {activeSection ? (
+                          <span className="rounded-full border border-[rgba(15,23,42,0.08)] bg-[#f7fafc] px-3 py-1.5 text-xs font-bold text-slate-700">
+                            {activeSection.sectionLabel}
+                          </span>
+                        ) : null}
+                        {activeSection?.timeSummary ? (
+                          <span className="rounded-full border border-[rgba(15,23,42,0.08)] bg-[#edf4ff] px-3 py-1.5 text-xs font-bold text-[#005bac]">
+                            {activeSection.timeSummary}
+                          </span>
+                        ) : null}
+                        {hasMultipleSections ? (
+                          <div className="min-w-[220px]">
+                            <Select value={selectedSectionId ?? undefined} onValueChange={setSelectedSectionId}>
+                              <SelectTrigger className="h-10 rounded-full border-[rgba(15,23,42,0.08)] bg-white font-semibold text-slate-700">
+                                <SelectValue placeholder="분반 선택" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {courseGroup.sections.map((section) => (
+                                  <SelectItem key={section.id} value={section.id}>
+                                    {section.timeSummary ? `${section.sectionLabel} · ${section.timeSummary}` : section.sectionLabel}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="mt-auto flex flex-col">
@@ -229,12 +367,18 @@ export function CourseDetailPage() {
                       강의계획서 보기
                     </Button>
                     <Button
-                      onClick={handleToggleTimetableCart}
+                      onClick={handleTimetableCartAction}
                       variant="outline"
                       className="h-11 w-full rounded-full px-5 text-sm font-semibold text-slate-700"
                     >
                       <ShoppingBag className="mr-1.5 h-4 w-4 text-[#005bac]" />
-                      {isInTimetableCart ? '시간표 장바구니에서 빼기' : '시간표 장바구니 담기'}
+                      {isInTimetableCart
+                        ? hasMultipleSections
+                          ? `${activeCartSection?.sectionLabel ?? '담긴 분반'} 변경`
+                          : '시간표 장바구니에서 제거'
+                        : hasMultipleSections
+                          ? '분반 고르고 시간표 장바구니 담기'
+                          : '바로 시간표 장바구니 담기'}
                     </Button>
                     <Link to="/timetable" className="block w-full">
                       <Button

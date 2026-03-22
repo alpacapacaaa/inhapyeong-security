@@ -1,4 +1,4 @@
-import { Course, Review, User, PointHistory, Inquiry, Notice, CreateReviewInput } from '../types/types';
+import { Course, CourseSlot, Review, User, PointHistory, Inquiry, Notice, CreateReviewInput } from '../types/types';
 import { mockNotices, mockInquiries } from '../data/mockData';
 
 // Simulate API delay
@@ -81,6 +81,14 @@ interface CourseResponseDto {
   workload?: string;
   attendance?: string;
   grading?: string;
+  slots?: CourseSlotResponseDto[];
+}
+
+interface CourseSlotResponseDto {
+  day: CourseSlot['day'];
+  startPeriod: number;
+  endPeriod: number;
+  location?: string | null;
 }
 
 interface ReviewResponseDto {
@@ -246,6 +254,14 @@ const mapCourseResponse = (course: CourseResponseDto): Course => ({
   grading: normalizeGrading(course.grading),
   category: course.category === '전공' ? '전공' : '교양',
   type: course.type ?? '',
+  slots: Array.isArray(course.slots)
+    ? course.slots.map((slot) => ({
+        day: slot.day,
+        startPeriod: slot.startPeriod,
+        endPeriod: slot.endPeriod,
+        location: slot.location,
+      }))
+    : undefined,
 });
 
 const mapReviewResponse = (review: ReviewResponseDto): Review => {

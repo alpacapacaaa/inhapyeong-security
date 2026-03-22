@@ -4,14 +4,16 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { CourseCardSkeleton } from '../components/course/CourseSkeleton';
+import { SectionSelectDialog } from '../components/course/SectionSelectDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { courseService, userService } from '../api/api';
 import {
+  formatPeriodRange,
+  loadSelectedTimetableIds,
   loadTimetableCartIds,
   PERIODS,
-  TIMETABLE_BY_COURSE_ID,
   TIMETABLE_DAYS,
-  TimetableSlot,
+  saveSelectedTimetableIds,
   saveTimetableCartIds,
 } from '../data/timetableData';
 import { Course } from '../types/types';
@@ -25,11 +27,16 @@ import {
   ShoppingBag,
   X,
 } from 'lucide-react';
-import { CURRENT_SEMESTER_SHORT_LABEL, normalizeSemesterShortLabel } from '../lib/semester';
-
-type SearchResultItem = Course & {
-  isOpenCurrent: boolean;
-};
+import { CURRENT_SEMESTER_SHORT_LABEL } from '../lib/semester';
+import {
+  CourseProfessorGroup,
+  findGroupSelectionInCart,
+  getSubjectGroupKey,
+  groupCoursesByProfessor,
+  replaceGroupSelectionInCart,
+} from '../lib/courseGroups';
+import { buildSlotsByCourseId, getCourseSlots } from '../lib/timetableSlots';
+import { toast } from 'sonner';
 
 type BrowseSubjectGroup = {
   key: string;
@@ -38,7 +45,7 @@ type BrowseSubjectGroup = {
   category: Course['category'];
   type: string;
   isOpenCurrent: boolean;
-  professors: SearchResultItem[];
+  professorGroups: CourseProfessorGroup[];
 };
 
 const majorTypes = ['전공필수', '전공선택', '전공기초'];
@@ -88,10 +95,6 @@ const workloadLabel = {
 const sortByKoreanName = <T extends { name: string }>(items: T[]) =>
   [...items].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
 
-const getCourseOpenState = (course: Course) =>
-  normalizeSemesterShortLabel(course.semester) === CURRENT_SEMESTER_SHORT_LABEL;
-
-
 function TimetablePanel({
   open,
   cartCourses,
@@ -99,12 +102,12 @@ function TimetablePanel({
   onToggleCart,
 }: {
   open: boolean;
-  cartCourses: SearchResultItem[];
+  cartCourses: Course[];
   onClose: () => void;
   onToggleCart: (courseId: string) => void;
 }) {
   const cartEntries = cartCourses.flatMap((course) =>
-    (TIMETABLE_BY_COURSE_ID[course.id] ?? []).map((slot) => ({
+    getCourseSlots(course).map((slot) => ({
       ...slot,
       courseId: course.id,
       courseName: course.name,
@@ -206,12 +209,12 @@ function TimetablePanel({
                       <div>
                         <p className="text-lg font-black text-slate-900">{course.name}</p>
                         <p className="mt-1 text-sm font-medium text-slate-500">
-                          {course.professor} 교수님{course.section ? ` · ${course.section}분반` : ''}
+                          {course.professor}{course.section ? ` · ${course.section}분반` : ''}
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2">
-                          {(TIMETABLE_BY_COURSE_ID[course.id] ?? []).map((slot) => (
+                          {getCourseSlots(course).map((slot) => (
                             <span key={`${course.id}-${slot.day}-${slot.startPeriod}`} className="rounded-full bg-[#eef7ff] px-3 py-1.5 text-xs font-bold text-[#005bac]">
-                              {slot.day} {slot.startPeriod}-{slot.endPeriod}교시
+                              {slot.day} {formatPeriodRange(slot.startPeriod, slot.endPeriod)}
                             </span>
                           ))}
                         </div>
@@ -297,14 +300,17 @@ function TimetablePanel({
 }
 
 function SearchResultCard({
-  course,
-  isInCart,
-  onToggleCart,
+  group,
+  selectedCourseId,
+  onCartAction,
 }: {
-  course: SearchResultItem;
-  isInCart: boolean;
-  onToggleCart: (courseId: string) => void;
+  group: CourseProfessorGroup;
+  selectedCourseId: string | null;
+  onCartAction: (group: CourseProfessorGroup) => void;
 }) {
+  const selectedSection = group.sections.find((section) => section.id === selectedCourseId) ?? null;
+  const hasMultipleSections = group.sections.length > 1;
+
   return (
     <Card className="overflow-hidden rounded-[1.6rem] border border-[rgba(15,23,42,0.08)] bg-[#fcfdff] transition-all hover:border-[#005bac]/18 hover:shadow-[0_20px_40px_rgba(15,23,42,0.06)]">
       <CardContent className="p-0">
@@ -313,51 +319,85 @@ function SearchResultCard({
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0">
                 <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#005bac]">
-                  {course.category === '전공' ? '전공 강의' : '교양 강의'}
+                  {group.category === '전공' ? '전공 강의' : '교양 강의'}
                 </p>
                 <h3 className="mt-2 text-xl font-black tracking-tight text-slate-900 md:text-[1.55rem]">
-                  {course.name}
+                  {group.name}
                 </h3>
                 <p className="mt-1.5 text-sm font-semibold text-slate-600 md:text-[15px]">
-                  {course.professor} 교수님{course.section ? ` · ${course.section}분반` : ''} · {course.department}
+                  {group.professor} · {group.department}
                 </p>
               </div>
               <div className="flex flex-row flex-wrap items-center gap-2 md:justify-end">
                 <Badge className="rounded-full border border-[rgba(15,23,42,0.08)] bg-white px-3 py-1.5 text-xs font-bold text-slate-700">
-                  {course.type}
+                  {group.type}
                 </Badge>
                 <span
                   className={`rounded-full px-3 py-1.5 text-xs font-black ${
-                    course.isOpenCurrent
+                    group.isOpenCurrent
                       ? 'border border-[rgba(0,91,172,0.08)] bg-[#edf4ff] text-[#005bac]'
                       : 'bg-slate-100 text-slate-500'
                   }`}
                 >
-                  {course.isOpenCurrent ? `${CURRENT_SEMESTER_SHORT_LABEL} 개설 중` : '현재 미개설'}
+                  {group.isOpenCurrent ? `${CURRENT_SEMESTER_SHORT_LABEL} 개설 중` : '현재 미개설'}
                 </span>
               </div>
             </div>
 
             <div className="flex flex-col gap-3 border-y border-[rgba(15,23,42,0.08)] py-4 md:flex-row md:items-center md:justify-between">
-              <StarRating value={course.rating} size="md" reviewCount={course.reviewCount} />
+              <StarRating value={group.rating} size="md" reviewCount={group.reviewCount} />
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600">
-                  난이도 {difficultyLabel[course.difficulty]}
+                  난이도 {difficultyLabel[group.difficulty]}
                 </Badge>
                 <Badge className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600">
-                  학습량 {workloadLabel[course.workload]}
+                  학습량 {workloadLabel[group.workload]}
+                </Badge>
+                <Badge className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-600">
+                  분반 {group.sections.length}개
                 </Badge>
               </div>
             </div>
 
+            <div className="flex flex-wrap gap-2">
+              {group.sections.slice(0, 3).map((section) => (
+                <span
+                  key={section.id}
+                  className={`rounded-full px-3 py-1.5 text-xs font-bold ${
+                    selectedSection?.id === section.id
+                      ? 'bg-[#e8f2ff] text-[#005bac]'
+                      : 'bg-[#f4f6f8] text-slate-500'
+                  }`}
+                >
+                  {section.timeSummary ? `${section.sectionLabel} · ${section.timeSummary}` : section.sectionLabel}
+                </span>
+              ))}
+              {group.sections.length > 3 ? (
+                <span className="rounded-full bg-[#f4f6f8] px-3 py-1.5 text-xs font-bold text-slate-500">
+                  +{group.sections.length - 3}개 분반
+                </span>
+              ) : null}
+            </div>
+
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button type="button" variant={isInCart ? 'secondary' : 'outline'} onClick={() => onToggleCart(course.id)} className="h-11 rounded-full px-5 text-sm font-bold">
+              <Button
+                type="button"
+                variant={selectedSection ? 'secondary' : 'outline'}
+                onClick={() => onCartAction(group)}
+                className="h-11 rounded-full px-5 text-sm font-bold"
+              >
                 <ShoppingBag className="h-4 w-4" />
-                {isInCart ? '장바구니에서 제거' : '시간표 장바구니 담기'}
+                {selectedSection
+                  ? hasMultipleSections
+                    ? `담긴 분반 변경 (${selectedSection.sectionLabel})`
+                    : '시간표 장바구니에서 제거'
+                  : hasMultipleSections
+                    ? '분반 고르고 시간표 장바구니 담기'
+                    : '바로 시간표 장바구니 담기'}
               </Button>
 
               <Button asChild className="h-11 rounded-full px-6 text-sm font-bold text-white">
-                <Link to={`/course/${course.id}`}>강의평 보러가기</Link>
+                <Link to={`/course/${encodeURIComponent(group.id)}`}>강의평 보러가기</Link>
               </Button>
             </div>
           </div>
@@ -372,13 +412,13 @@ function SubjectAccordionCard({
   expanded,
   onToggle,
   cartIds,
-  onToggleCart,
+  onCartAction,
 }: {
   group: BrowseSubjectGroup;
   expanded: boolean;
   onToggle: () => void;
   cartIds: string[];
-  onToggleCart: (courseId: string) => void;
+  onCartAction: (group: CourseProfessorGroup) => void;
 }) {
   return (
     <Card
@@ -403,7 +443,7 @@ function SubjectAccordionCard({
                 {group.name}
               </h3>
               <p className={`mt-2 text-sm font-semibold ${group.isOpenCurrent ? 'text-slate-600' : 'text-slate-400'}`}>
-                {group.department} · {group.professors.length}명
+                {group.department} · {group.professorGroups.length}명
               </p>
             </div>
 
@@ -429,46 +469,76 @@ function SubjectAccordionCard({
       {expanded && (
         <div className="border-t border-[#005bac]/8 bg-white px-5 pb-2 md:px-6">
           <div className="divide-y divide-[rgba(15,23,42,0.08)] pt-2">
-            {group.professors.map((course) => {
+            {group.professorGroups.map((professorGroup) => {
+              const selectedSection = findGroupSelectionInCart(cartIds, professorGroup);
+              const hasMultipleSections = professorGroup.sections.length > 1;
+
               return (
                 <div
-                  key={course.id}
+                  key={professorGroup.id}
                   className="py-4"
                 >
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="text-base font-black text-slate-900">
-                          {course.professor} 교수님{course.section ? ` · ${course.section}분반` : ''}
+                          {professorGroup.professor}
                         </p>
                         <span
                           className={`rounded-full px-2.5 py-1 text-[11px] font-black ${
-                            course.isOpenCurrent
+                            professorGroup.isOpenCurrent
                               ? 'bg-[#edf4ff] text-[#005bac]'
                               : 'bg-slate-100 text-slate-500'
                           }`}
                         >
-                          {course.isOpenCurrent ? `${CURRENT_SEMESTER_SHORT_LABEL} 개설` : '과거 개설'}
+                          {professorGroup.isOpenCurrent ? `${CURRENT_SEMESTER_SHORT_LABEL} 개설` : '과거 개설'}
                         </span>
                       </div>
-                      <p className="mt-1 text-sm font-medium text-slate-500">리뷰 {course.reviewCount}개</p>
+                      <p className="mt-1 text-sm font-medium text-slate-500">
+                        리뷰 {professorGroup.reviewCount}개 · 분반 {professorGroup.sections.length}개
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {professorGroup.sections.slice(0, 3).map((section) => (
+                          <span
+                            key={section.id}
+                            className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                              selectedSection?.id === section.id
+                                ? 'bg-[#edf4ff] text-[#005bac]'
+                                : 'bg-[#f4f6f8] text-slate-500'
+                            }`}
+                          >
+                            {section.timeSummary ? `${section.sectionLabel} · ${section.timeSummary}` : section.sectionLabel}
+                          </span>
+                        ))}
+                        {professorGroup.sections.length > 3 ? (
+                          <span className="rounded-full bg-[#f4f6f8] px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                            +{professorGroup.sections.length - 3}개 분반
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <StarRating value={course.rating} size="sm" showValue={true} />
+                      <StarRating value={professorGroup.rating} size="sm" showValue={true} reviewCount={professorGroup.reviewCount} />
 
                       <Button
                         type="button"
-                        variant={cartIds.includes(course.id) ? 'secondary' : 'outline'}
-                        onClick={() => onToggleCart(course.id)}
+                        variant={selectedSection ? 'secondary' : 'outline'}
+                        onClick={() => onCartAction(professorGroup)}
                         className="h-10 rounded-full px-4 text-sm font-bold"
                       >
                         <ShoppingBag className="h-4 w-4" />
-                        {cartIds.includes(course.id) ? '담김' : '장바구니'}
+                        {selectedSection
+                          ? hasMultipleSections
+                            ? selectedSection.sectionLabel
+                            : '장바구니 제거'
+                          : hasMultipleSections
+                            ? '분반 선택'
+                            : '바로 담기'}
                       </Button>
 
                       <Button asChild className="h-10 rounded-full px-5 text-sm font-bold text-white">
-                        <Link to={`/course/${course.id}`}>강의평 보기</Link>
+                        <Link to={`/course/${encodeURIComponent(professorGroup.id)}`}>강의평 보기</Link>
                       </Button>
                     </div>
                   </div>
@@ -491,11 +561,12 @@ export function SearchPage() {
   const [selectedTheme, setSelectedTheme] = useState<string>('all');
   const [selectedDepartment, setSelectedDepartment] = useState('전체');
   const [departmentOptions, setDepartmentOptions] = useState<string[]>(['전체']);
-  const [allCourses, setAllCourses] = useState<SearchResultItem[]>([]);
-  const [courses, setCourses] = useState<SearchResultItem[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [expandedSubjects, setExpandedSubjects] = useState<string[]>([]);
   const [cartIds, setCartIds] = useState<string[]>([]);
   const [isCartPanelOpen, setIsCartPanelOpen] = useState(false);
+  const [sectionPickerGroup, setSectionPickerGroup] = useState<CourseProfessorGroup | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const toggleType = (type: string) => {
@@ -512,15 +583,85 @@ export function SearchPage() {
     );
   };
 
-  const toggleCart = (courseId: string) => {
+  const openSectionPicker = (group: CourseProfessorGroup) => {
+    setSectionPickerGroup(group);
+  };
+
+  const handleCartAction = (group: CourseProfessorGroup) => {
+    if (group.sections.length > 1) {
+      openSectionPicker(group);
+      return;
+    }
+
+    const onlySection = group.sections[0];
+    if (!onlySection) {
+      return;
+    }
+
+    const selectedSection = findGroupSelectionInCart(cartIds, group);
+    const idsInGroup = new Set(group.courses.map((course) => course.id));
+
+    if (selectedSection) {
+      const next = cartIds.filter((courseId) => !idsInGroup.has(courseId));
+      setCartIds(next);
+      saveTimetableCartIds(next);
+      saveSelectedTimetableIds(loadSelectedTimetableIds().filter((savedId) => !idsInGroup.has(savedId)));
+      toast.success('시간표 장바구니에서 제거했습니다.');
+      return;
+    }
+
+    const next = replaceGroupSelectionInCart(cartIds, group, onlySection.id);
+    setCartIds(next);
+    saveTimetableCartIds(next);
+    saveSelectedTimetableIds(loadSelectedTimetableIds().filter((savedId) => !idsInGroup.has(savedId)));
+    toast.success('시간표 장바구니에 담았습니다.');
+    setIsCartPanelOpen(true);
+  };
+
+  const handleConfirmSection = (courseId: string) => {
+    if (!sectionPickerGroup) {
+      return;
+    }
+
     setCartIds((prev) => {
-      const next = prev.includes(courseId)
-        ? prev.filter((id) => id !== courseId)
-        : [...prev, courseId];
+      const next = replaceGroupSelectionInCart(prev, sectionPickerGroup, courseId);
       saveTimetableCartIds(next);
       return next;
     });
+    const idsInGroup = new Set(sectionPickerGroup.courses.map((course) => course.id));
+    saveSelectedTimetableIds(loadSelectedTimetableIds().filter((savedId) => !idsInGroup.has(savedId)));
+
+    const selectedSection = sectionPickerGroup.sections.find((section) => section.id === courseId);
+    toast.success(
+      `${selectedSection?.sectionLabel ?? '선택한 분반'}을 시간표 장바구니에 담았습니다.`,
+    );
+    setSectionPickerGroup(null);
     setIsCartPanelOpen(true);
+  };
+
+  const handleRemoveGroupSelection = () => {
+    if (!sectionPickerGroup) {
+      return;
+    }
+
+    const idsInGroup = new Set(sectionPickerGroup.courses.map((course) => course.id));
+    setCartIds((prev) => {
+      const next = prev.filter((courseId) => !idsInGroup.has(courseId));
+      saveTimetableCartIds(next);
+      return next;
+    });
+    saveSelectedTimetableIds(loadSelectedTimetableIds().filter((savedId) => !idsInGroup.has(savedId)));
+    toast.success('시간표 장바구니에서 제거했습니다.');
+    setSectionPickerGroup(null);
+  };
+
+  const removeFromCart = (courseId: string) => {
+    setCartIds((prev) => {
+      const next = prev.filter((id) => id !== courseId);
+      saveTimetableCartIds(next);
+      return next;
+    });
+    saveSelectedTimetableIds(loadSelectedTimetableIds().filter((savedId) => savedId !== courseId));
   };
 
   useEffect(() => {
@@ -544,12 +685,7 @@ export function SearchPage() {
     const fetchAllCourses = async () => {
       try {
         const results = await courseService.getAllCourses();
-        setAllCourses(
-          results.map((course) => ({
-            ...course,
-            isOpenCurrent: getCourseOpenState(course),
-          })),
-        );
+        setAllCourses(results);
       } catch (error) {
         console.error('Failed to fetch all courses for timetable cart', error);
       }
@@ -576,7 +712,7 @@ export function SearchPage() {
     const fetchCourses = async () => {
       setIsLoading(true);
       try {
-        let results = [];
+        let results: Course[] = [];
 
         if (query.trim()) {
           results = await courseService.searchCourses(query, selectedDepartment);
@@ -626,12 +762,7 @@ export function SearchPage() {
           }
         }
 
-        const enriched = results.map((course) => ({
-          ...course,
-          isOpenCurrent: getCourseOpenState(course),
-        }));
-
-        setCourses(enriched);
+        setCourses(results);
       } catch (error) {
         console.error('Failed to search courses', error);
       } finally {
@@ -642,43 +773,44 @@ export function SearchPage() {
     fetchCourses();
   }, [query, selectedDepartment, selectedCategory, selectedTypes, selectedMajorType, selectedTheme]);
 
+  const professorGroups = useMemo(
+    () => groupCoursesByProfessor(courses, buildSlotsByCourseId(courses)),
+    [courses],
+  );
+
   const groupedSubjects = useMemo<BrowseSubjectGroup[]>(() => {
     const map = new Map<string, BrowseSubjectGroup>();
 
-    for (const course of courses) {
-      const key = `${course.name}::${course.department}::${course.category}`;
+    for (const professorGroup of professorGroups) {
+      const key = getSubjectGroupKey(professorGroup.primaryCourse);
       const existing = map.get(key);
 
       if (!existing) {
         map.set(key, {
           key,
-          name: course.name,
-          department: course.department,
-          category: course.category,
-          type: course.type,
-          isOpenCurrent: course.isOpenCurrent,
-          professors: [course],
+          name: professorGroup.name,
+          department: professorGroup.department,
+          category: professorGroup.category,
+          type: professorGroup.type,
+          isOpenCurrent: professorGroup.isOpenCurrent,
+          professorGroups: [professorGroup],
         });
         continue;
       }
 
-      existing.professors.push(course);
-      existing.isOpenCurrent = existing.isOpenCurrent || course.isOpenCurrent;
+      existing.professorGroups.push(professorGroup);
+      existing.isOpenCurrent = existing.isOpenCurrent || professorGroup.isOpenCurrent;
     }
 
     return [...map.values()]
       .map((group) => ({
         ...group,
-        professors: [...group.professors].sort((a, b) => {
-          const professorOrder = a.professor.localeCompare(b.professor, 'ko');
-          if (professorOrder !== 0) {
-            return professorOrder;
-          }
-          return (a.section ?? '').localeCompare(b.section ?? '', 'ko');
-        }),
+        professorGroups: [...group.professorGroups].sort((a, b) =>
+          a.professor.localeCompare(b.professor, 'ko'),
+        ),
       }))
       .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
-  }, [courses]);
+  }, [professorGroups]);
 
   const currentOpenSubjects = groupedSubjects.filter((group) => group.isOpenCurrent);
   const archivedSubjects = groupedSubjects.filter((group) => !group.isOpenCurrent);
@@ -689,24 +821,7 @@ export function SearchPage() {
         .sort((a, b) => a.name.localeCompare(b.name, 'ko')),
     [allCourses, cartIds],
   );
-  const sortedSearchResults = useMemo(
-    () =>
-      [...courses].sort((a, b) => {
-        if (a.isOpenCurrent !== b.isOpenCurrent) {
-          return a.isOpenCurrent ? -1 : 1;
-        }
-        const courseNameOrder = a.name.localeCompare(b.name, 'ko');
-        if (courseNameOrder !== 0) {
-          return courseNameOrder;
-        }
-        const professorOrder = a.professor.localeCompare(b.professor, 'ko');
-        if (professorOrder !== 0) {
-          return professorOrder;
-        }
-        return (a.section ?? '').localeCompare(b.section ?? '', 'ko');
-      }),
-    [courses],
-  );
+  const sortedSearchResults = useMemo(() => professorGroups, [professorGroups]);
   return (
     <div className="min-h-screen">
       <div className="page-shell py-8">
@@ -901,12 +1016,12 @@ export function SearchPage() {
               </div>
             ) : query ? (
               <div className="space-y-4">
-                {sortedSearchResults.map((course) => (
+                {sortedSearchResults.map((group) => (
                   <SearchResultCard
-                    key={course.id}
-                    course={course}
-                    isInCart={cartIds.includes(course.id)}
-                    onToggleCart={toggleCart}
+                    key={group.id}
+                    group={group}
+                    selectedCourseId={findGroupSelectionInCart(cartIds, group)?.id ?? null}
+                    onCartAction={handleCartAction}
                   />
                 ))}
 
@@ -948,7 +1063,7 @@ export function SearchPage() {
                           expanded={expandedSubjects.includes(group.key)}
                           onToggle={() => toggleSubject(group.key)}
                           cartIds={cartIds}
-                          onToggleCart={toggleCart}
+                          onCartAction={handleCartAction}
                         />
                       ))
                     ) : (
@@ -979,7 +1094,7 @@ export function SearchPage() {
                           expanded={expandedSubjects.includes(group.key)}
                           onToggle={() => toggleSubject(group.key)}
                           cartIds={cartIds}
-                          onToggleCart={toggleCart}
+                          onCartAction={handleCartAction}
                         />
                       ))
                     ) : (
@@ -1024,7 +1139,16 @@ export function SearchPage() {
         open={isCartPanelOpen}
         cartCourses={cartCourses}
         onClose={() => setIsCartPanelOpen(false)}
-        onToggleCart={toggleCart}
+        onToggleCart={removeFromCart}
+      />
+
+      <SectionSelectDialog
+        open={sectionPickerGroup !== null}
+        group={sectionPickerGroup}
+        currentCourseId={sectionPickerGroup ? findGroupSelectionInCart(cartIds, sectionPickerGroup)?.id ?? null : null}
+        onClose={() => setSectionPickerGroup(null)}
+        onConfirm={handleConfirmSection}
+        onRemove={sectionPickerGroup ? handleRemoveGroupSelection : undefined}
       />
     </div>
   );
