@@ -235,6 +235,7 @@ const mapCourseResponse = (course: CourseResponseDto): Course => ({
   name: course.name,
   professor: course.professor,
   department: course.department,
+  semester: course.semester,
   credits: course.credits,
   section: course.section,
   rating: course.rating ?? 0,
@@ -401,11 +402,23 @@ let currentUser: User | null = null;
 let pointHistory: PointHistory[] = [];
 let inquiries = [...mockInquiries];
 let notices = [...mockNotices];
+let cachedDepartments: string[] | null = null;
 
 export const courseService = {
   getAllCourses: async (): Promise<Course[]> => {
     const results = await apiRequest<CourseResponseDto[]>('/api/courses');
     return results.map(mapCourseResponse);
+  },
+
+  getDepartments: async (): Promise<string[]> => {
+    if (cachedDepartments) {
+      return cachedDepartments;
+    }
+
+    const courses = await courseService.getAllCourses();
+    cachedDepartments = [...new Set(courses.map((course) => course.department).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'ko'));
+    return cachedDepartments;
   },
 
   getCourseById: async (id: string): Promise<Course | undefined> => {

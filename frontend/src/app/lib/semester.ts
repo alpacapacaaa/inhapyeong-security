@@ -28,6 +28,29 @@ export const formatSemesterLabel = (year: number, term: SemesterTerm) => `${year
 export const formatSemesterShortLabel = (year: number, term: SemesterTerm) =>
   `${String(year).slice(-2)}-${term}`;
 
+export const normalizeSemesterShortLabel = (label?: string | null) => {
+  if (!label) {
+    return '';
+  }
+
+  const cleaned = label.replace(/\s/g, '').replace('학기', '');
+  const [yearRaw, termRaw] = cleaned.split('-');
+
+  if (!yearRaw || !termRaw) {
+    return cleaned;
+  }
+
+  const year = Number(yearRaw);
+  const term = Number(termRaw);
+
+  if (!Number.isFinite(year) || !Number.isFinite(term)) {
+    return cleaned;
+  }
+
+  const normalizedYear = year >= 100 ? String(year).slice(-2) : String(year).padStart(2, '0');
+  return `${normalizedYear}-${term}`;
+};
+
 export const buildSemesterOptions = (startYear: number, startTerm: SemesterTerm, date = new Date()) => {
   const { year: currentYear, term: currentTerm } = getCurrentSemesterTerm(date);
   const semesters: string[] = [];

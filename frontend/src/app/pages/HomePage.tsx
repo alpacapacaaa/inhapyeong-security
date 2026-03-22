@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router';
 import { Search } from 'lucide-react';
 import annyongiRunA from '../../assets/annyongi-run-a.png';
 import annyongiRunB from '../../assets/annyongi-run-b.png';
+import induckiWalkA from '../../assets/inducki-walk-a.png';
+import induckiWalkB from '../../assets/inducki-walk-b.png';
+import induckiWalkC from '../../assets/inducki-walk-c.png';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { CourseCard } from '../components/CourseCard';
@@ -108,6 +111,19 @@ export function HomePage() {
             </div>
 
             <div className="hero-ground hero-ground-track hidden xl:block" aria-hidden="true">
+              <div className="hero-mascot hero-mascot-ground animate-hero-mascot-ground">
+                <div className="hero-mascot-sprite hero-mascot-sprite-ground">
+                  <div className="hero-mascot-pose hero-mascot-pose-ground-a">
+                    <img src={induckiWalkA} alt="" className="hero-mascot-figure hero-mascot-img" aria-hidden="true" />
+                  </div>
+                  <div className="hero-mascot-pose hero-mascot-pose-ground-b">
+                    <img src={induckiWalkB} alt="" className="hero-mascot-figure hero-mascot-img" aria-hidden="true" />
+                  </div>
+                  <div className="hero-mascot-pose hero-mascot-pose-ground-c">
+                    <img src={induckiWalkC} alt="" className="hero-mascot-figure hero-mascot-img" aria-hidden="true" />
+                  </div>
+                </div>
+              </div>
               <span className="hero-ground-dot hero-ground-dot-a" />
               <span className="hero-ground-dot hero-ground-dot-b" />
               <span className="hero-ground-dot hero-ground-dot-c" />
