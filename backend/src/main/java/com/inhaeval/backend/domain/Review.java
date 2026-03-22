@@ -101,6 +101,43 @@ public class Review {
     private Integer attScore;
     private Integer pastExamScore;
 
+    @ElementCollection
+    @CollectionTable(name = "review_badges", joinColumns = @JoinColumn(name = "review_id"))
+    @Column(name = "badge")
+    private java.util.List<String> badges;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String examMidtermInfo;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String examFinalInfo;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String examAssignmentInfo;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String examQuizInfo;
+
+    private String pastExamHelpfulness;
+    private String scopePredictability;
+
+    @ElementCollection
+    @CollectionTable(name = "review_study_resources", joinColumns = @JoinColumn(name = "review_id"))
+    @Column(name = "resource")
+    private java.util.List<String> studyResources;
+
+    @ElementCollection
+    @CollectionTable(name = "review_problem_styles", joinColumns = @JoinColumn(name = "review_id"))
+    @Column(name = "style")
+    private java.util.List<String> problemStyles;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String examPrepTip;
 
     @PrePersist
     public void prePersist() { this.createdAt = LocalDateTime.now(); }

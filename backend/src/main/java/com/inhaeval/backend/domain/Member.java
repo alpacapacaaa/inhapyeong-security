@@ -78,6 +78,9 @@ public class Member {
             this.passExpiryDate = LocalDateTime.now().plusDays(days);
         }
     }
+    public void updateNickname(String nickname) { this.nickname = nickname; }
+    public void updateDepartment(String department) { this.department = department; }
+    public void updatePhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
 
-    
+
 }

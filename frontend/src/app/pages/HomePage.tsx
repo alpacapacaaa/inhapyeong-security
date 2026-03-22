@@ -52,14 +52,25 @@ export function HomePage() {
         const recent = allCourses.slice(0, 3);
         const coursesWithReviews = await Promise.all(
           recent.map(async (course) => {
-            const reviews = await reviewService.getReviewsByCourseId(course.id);
-            const latestReview = reviews.length > 0 ? reviews[0].content : undefined;
-            return { ...course, latestReviewContent: latestReview };
+            try {
+              const reviews = await reviewService.getReviewsByCourseId(course.id);
+              const latestReview = reviews.length > 0 ? reviews[0].content : undefined;
+              return { ...course, latestReviewContent: latestReview };
+            } catch (reviewError) {
+              console.error(`Failed to fetch latest review for course ${course.id}`, reviewError);
+              return { ...course };
+            }
           }),
         );
         setRecentCourses(coursesWithReviews);
 
-        setHoneyGECourses(await courseService.getHoneyGE());
+        try {
+          setHoneyGECourses(await courseService.getHoneyGE());
+        } catch (honeyError) {
+          console.error('Failed to fetch honey GE courses', honeyError);
+          setHoneyGECourses([]);
+        }
+
         setMajorCourses(await courseService.getMajorRecommended(userData?.department || '컴퓨터공학과'));
       } catch (error) {
         console.error('Failed to fetch data', error);
