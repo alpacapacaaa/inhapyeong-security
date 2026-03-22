@@ -320,7 +320,7 @@ export function AuthPage({ onLogin }: AuthPageProps) {
 
     setIsLoading(true);
     try {
-      await userService.verifyPhoneCode(normalizePhoneNumber(phone), phoneCode);
+      await userService.verifyPasswordResetCode(normalizePhoneNumber(phone), phoneCode);
       setFindPwdStep(3);
       toast.success('인증 성공. 새 비밀번호를 입력해주세요.');
     } catch (error: any) {
