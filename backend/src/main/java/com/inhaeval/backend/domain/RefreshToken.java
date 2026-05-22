@@ -22,6 +22,15 @@ public class RefreshToken {
     @Column(nullable = false, unique = true)
     private String token;
 
+    // 동일 로그인 세션에서 발급된 토큰을 묶는 식별자 (RFC 6819 §5.2.2.3)
+    @Column(nullable = false)
+    private String familyId;
+
+    // 이미 사용(rotation)된 토큰. true인 토큰이 재사용되면 탈취로 간주
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean used = false;
+
     @Column(nullable = false)
     private LocalDateTime expiresAt;
 
@@ -35,5 +44,9 @@ public class RefreshToken {
 
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(this.expiresAt);
+    }
+
+    public void markAsUsed() {
+        this.used = true;
     }
 }
