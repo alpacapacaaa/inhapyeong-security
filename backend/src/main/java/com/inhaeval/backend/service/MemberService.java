@@ -22,10 +22,19 @@ import com.inhaeval.backend.repository.PointHistoryRepository;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 @RequiredArgsConstructor
 public class MemberService {
+
+    // 이메일 단위 락 — 동일 사용자의 동시 Rotation 요청을 직렬화
+    private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
+
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private MemberService self;
 
     private final PointHistoryRepository pointHistoryRepository;
     private final MemberRepository memberRepository;
@@ -155,8 +164,23 @@ public class MemberService {
                 .build();
     }
 
-    @Transactional
+    // 락이 @Transactional을 감싸야 커밋 직전 틈새를 막을 수 있다 — self를 통해 프록시 경유
     public LoginResponse refreshAccessToken(String token) {
+        String email = refreshTokenRepository.findByToken(token)
+                .map(RefreshToken::getEmail)
+                .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "유효하지 않은 Refresh Token입니다."));
+
+        ReentrantLock lock = userLocks.computeIfAbsent(email, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            return self.doRefreshWithTransaction(token);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Transactional
+    public LoginResponse doRefreshWithTransaction(String token) {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
                 .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "유효하지 않은 Refresh Token입니다."));
 
@@ -175,7 +199,6 @@ public class MemberService {
         String newAccessToken = jwtUtil.generateToken(member.getEmail());
         String newRefreshToken = UUID.randomUUID().toString();
 
-        // 보안을 위해 기존 토큰 폐기 후 새 토큰 발급 (Refresh Token Rotation)
         refreshTokenRepository.delete(refreshToken);
         refreshTokenRepository.save(RefreshToken.builder()
                 .email(member.getEmail())
