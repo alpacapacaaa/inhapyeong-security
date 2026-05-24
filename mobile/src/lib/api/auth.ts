@@ -119,3 +119,7 @@ export function resetPassword(phoneNumber: string, newPassword: string, newPassw
     body: JSON.stringify({ phoneNumber, newPassword, newPasswordConfirm }),
   });
 }
+
+export function logout() {
+  return apiRequest<void>('/api/auth/logout', { method: 'DELETE' });
+}
