@@ -151,11 +151,13 @@ public class MemberService {
 
         String accessToken = jwtUtil.generateToken(member.getEmail());
         String refreshTokenValue = UUID.randomUUID().toString();
+        String familyId = UUID.randomUUID().toString();
 
         refreshTokenRepository.deleteByEmail(member.getEmail());
         refreshTokenRepository.save(RefreshToken.builder()
                 .email(member.getEmail())
                 .token(refreshTokenValue)
+                .familyId(familyId)
                 .expiresAt(LocalDateTime.now().plusSeconds(refreshExpiration / 1000))
                 .build());
 
@@ -187,6 +189,13 @@ public class MemberService {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
                 .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "유효하지 않은 Refresh Token입니다."));
 
+        // 이미 사용된 토큰으로 재요청 → 탈취 감지 (RFC 6819 §5.2.2.3)
+        if (refreshToken.isUsed()) {
+            refreshTokenRepository.deleteByFamilyId(refreshToken.getFamilyId());
+            throw new CustomException(HttpStatus.UNAUTHORIZED,
+                    "Refresh Token이 재사용되었습니다. 보안을 위해 모든 세션이 종료됩니다.");
+        }
+
         if (refreshToken.isExpired()) {
             refreshTokenRepository.delete(refreshToken);
             throw new CustomException(HttpStatus.UNAUTHORIZED, "만료된 Refresh Token입니다. 다시 로그인해주세요.");
@@ -202,10 +211,15 @@ public class MemberService {
         String newAccessToken = jwtUtil.generateToken(member.getEmail());
         String newRefreshToken = UUID.randomUUID().toString();
 
-        refreshTokenRepository.delete(refreshToken);
+        // 기존 토큰 used=true 마킹 → 삭제하지 않아야 재사용 감지 가능
+        refreshToken.markAsUsed();
+        refreshTokenRepository.save(refreshToken);
+
+
         refreshTokenRepository.save(RefreshToken.builder()
                 .email(member.getEmail())
                 .token(newRefreshToken)
+                .familyId(refreshToken.getFamilyId())
                 .expiresAt(LocalDateTime.now().plusSeconds(refreshExpiration / 1000))
                 .build());
 
