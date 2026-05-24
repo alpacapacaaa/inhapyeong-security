@@ -13,6 +13,7 @@ import com.inhaeval.backend.repository.RefreshTokenRepository;
 import com.inhaeval.backend.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,10 +23,20 @@ import com.inhaeval.backend.repository.PointHistoryRepository;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 @RequiredArgsConstructor
 public class MemberService {
+
+    // 이메일 단위 락 — 동일 사용자의 동시 Rotation 요청을 직렬화
+    private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
+
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private MemberService self;
 
     private final PointHistoryRepository pointHistoryRepository;
     private final MemberRepository memberRepository;
@@ -36,6 +47,7 @@ public class MemberService {
     private final MailService mailService;
     private final JwtUtil jwtUtil;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final StringRedisTemplate redisTemplate;
 
     @Value("${jwt.refresh-expiration}")
     private long refreshExpiration;
@@ -157,8 +169,23 @@ public class MemberService {
                 .build();
     }
 
-    @Transactional
+    // 락이 @Transactional을 감싸야 커밋 직전 틈새를 막을 수 있다 — self를 통해 프록시 경유
     public LoginResponse refreshAccessToken(String token) {
+        String email = refreshTokenRepository.findByToken(token)
+                .map(RefreshToken::getEmail)
+                .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "유효하지 않은 Refresh Token입니다."));
+
+        ReentrantLock lock = userLocks.computeIfAbsent(email, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            return self.doRefreshWithTransaction(token);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Transactional
+    public LoginResponse doRefreshWithTransaction(String token) {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
                 .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "유효하지 않은 Refresh Token입니다."));
 
@@ -187,6 +214,7 @@ public class MemberService {
         // 기존 토큰 used=true 마킹 → 삭제하지 않아야 재사용 감지 가능
         refreshToken.markAsUsed();
         refreshTokenRepository.save(refreshToken);
+
 
         refreshTokenRepository.save(RefreshToken.builder()
                 .email(member.getEmail())
@@ -330,5 +358,20 @@ public class MemberService {
         }
 
         member.deactivate();
+    }
+
+    // 로그아웃: AT의 jti를 Redis 블랙리스트에 등록 + RT 삭제
+    @Transactional
+    public void logout(String accessToken) {
+        if (!jwtUtil.validateToken(accessToken)) return;
+
+        String jti = jwtUtil.getJti(accessToken);
+        long remainingExpiry = jwtUtil.getRemainingExpiry(accessToken);
+        if (remainingExpiry > 0) {
+            redisTemplate.opsForValue().set("blacklist:" + jti, "logout", remainingExpiry, TimeUnit.MILLISECONDS);
+        }
+
+        String email = jwtUtil.getEmail(accessToken);
+        refreshTokenRepository.deleteByEmail(email);
     }
 }
