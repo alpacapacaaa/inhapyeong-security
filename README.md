@@ -1,156 +1,71 @@
-# 인하평
+# 인하평 JWT 보안 포트폴리오
 
-인하평은 인하대학교 재학생을 위한 강의평가 플랫폼입니다.  
-수강신청 전에 강의 정보를 더 입체적으로 확인하고, 실제 수강 후기를 기반으로 과목을 탐색할 수 있도록 만드는 것을 목표로 합니다.
+직접 개발한 인하대학교 강의평가 모바일 앱(인하평)의 JWT 인증 구조를 대상으로,  
+취약점을 발굴하고 단계적으로 방어를 구현한 보안 포트폴리오입니다.
 
-현재 프로젝트는 단순한 강의평 게시판을 넘어서,
-- 학교 이메일 인증 기반 회원가입
-- 휴대폰 인증
-- JWT 로그인
-- 강의 검색 및 상세 조회
-- 강의평 작성/열람
-- 크롤러 기반 강의/강의계획서 데이터 수집
+## 바로가기
 
-까지 포함하는 형태로 확장 중입니다.
+| | 링크 |
+|---|---|
+| 취약점 분석 · 설계 (Issues) | [closed Issues 보기](https://github.com/alpacapacaaa/inhapyeong-security/issues?q=is%3Aissue+is%3Aclosed) |
+| 구현 · 데모 (Pull Requests) | [closed PRs 보기](https://github.com/alpacapacaaa/inhapyeong-security/pulls?q=is%3Apr+is%3Aclosed) |
 
-## 어떤 사이트인가요?
+---
 
-인하평은 인하대학교 수업을 수강한 학생들이 직접 강의평을 남기고, 다른 학생들이 이를 참고해 수강신청과 학업 계획에 활용할 수 있도록 만든 서비스입니다.
+## 포트폴리오 구조
 
-기존의 단순 별점/짧은 후기 형태를 넘어서,
-- 강의 난이도
-- 학습량
-- 출석 방식
-- 성적 방식
-- 시험/과제 특성
-- 한 줄 팁
+Issues에서 취약점을 분석하고 개선 방향을 설계한 뒤, PRs에서 실제 구현과 데모를 기록하는 방식으로 구성했습니다.
 
-같은 정보를 함께 제공해, 강의 선택에 더 실질적인 도움이 되는 경험을 만드는 것을 목표로 합니다.
-
-또한 학교 포털 기반 강의 데이터와 강의계획서 정보를 수집하는 크롤러를 함께 운영해, 서비스에 필요한 기본 강의 데이터를 자동으로 정리할 수 있도록 구성했습니다.
-
-## 주요 기능
-
-### 인증/계정
-- 인하대 이메일 인증 메일 발송 및 링크 인증
-- 휴대폰 인증번호 발송 및 검증
-- 회원가입 및 로그인
-- 비밀번호 재설정
-
-### 강의 탐색
-- 강의 목록 조회
-- 검색 및 필터링
-- 강의 상세 페이지 조회
-- 강의별 리뷰 통계 확인
-
-### 리뷰
-- 강의평 작성
-- 강의별 리뷰 열람
-- 사용자 리뷰 확인
-
-### 데이터 수집
-- Selenium 기반 강의 데이터 수집
-- 강의계획서 및 학과별 강의 목록 크롤링
-
-## 프로젝트 구조
-
-```text
-inha-eval/
-├── backend/    # Spring Boot 기반 API 서버
-├── frontend/   # React + Vite 기반 웹 프론트엔드
-├── crawler/    # Selenium 기반 데이터 수집 스크립트
-└── README.md
+```
+Issue #1 (취약점 분석) → PR #4 (Before 재현)
+Issue #2 (개선 설계)   → PR #5 (네트워크·원자성 방어)
+                        → PR #6 (동시성 방어)
+Issue #3 (심화 설계)   → PR #7 (Reuse Detection 구현)
+Issue #8 (리서치)      → DPoP 적용 가능성 탐색
 ```
 
-## 기술 스택
+---
 
-### Frontend
-- React
-- Vite
-- TypeScript
-- React Router
-- Tailwind CSS
-- Radix UI
+## 발견한 취약점과 개선 내용
 
-### Backend
-- Java 21
-- Spring Boot
-- Spring Security
-- Spring Data JPA
-- MySQL
-- JWT
-- Java Mail Sender
-- Springdoc OpenAPI
+### 취약점 1 — MITM Bearer Token 탈취
+SSL Pinning이 없어 Proxyman으로 HTTPS 트래픽이 평문으로 노출됐다.  
+탈취한 Access Token은 만료(15분)되기 전까지 어디서든 유효했다.
 
-### Crawler
-- Python
-- Selenium
-- BeautifulSoup
-- Pandas
+**개선:** React Native SSL Pinning 적용으로 신뢰하지 않는 프록시 차단  
+**개선:** Redis jti 블랙리스트 + 로그아웃 API로 탈취 토큰 즉시 무효화
 
-## 실행 방법
+### 취약점 2 — Race Condition
+`@Transactional`만으로는 동시 요청을 막을 수 없었다.  
+같은 Refresh Token으로 두 요청이 동시에 들어오면 한 쪽이 500 또는 401을 받았다.
 
-### 1. Frontend
+**개선:** 이메일 단위 `ReentrantLock`으로 Rotation 임계 구역 직렬화  
+**핵심:** 락이 `@Transactional`을 감싸야 커밋 직전 진입 틈새까지 막힘 → `self` 주입 패턴 적용
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+### 취약점 3 — Rotation 사각지대
+공격자가 Refresh Token을 탈취해 먼저 사용하면, 정상 사용자가 쫓겨나고 공격자 세션이 유지됐다.  
+`delete` 기반 Rotation은 탈취 흔적을 지워 서버가 이를 감지할 수 없었다.
 
-기본적으로 프론트엔드는 `.env.local`의 `VITE_API_BASE_URL` 값을 사용합니다.
+**개선:** RFC 6819 §5.2.2.3 기반 Reuse Detection 구현  
+- `delete` 대신 `used=true` 마킹으로 재사용 이력 보존  
+- `familyId`로 세션 그룹 묶기 → 재사용 감지 시 family 전체 무효화  
+- 구현 중 `@Transactional` 롤백으로 `deleteByFamilyId`가 무효화되는 버그 발견 → `noRollbackFor`로 해결
 
-예시:
+---
 
-```env
-VITE_API_BASE_URL=http://localhost:8080
-```
+## 데모 도구
 
-### 2. Backend
+| 도구 | 용도 |
+|---|---|
+| Proxyman | SSL Pinning 전후 비교, HTTP 요청/응답 확인 |
+| RedisInsight | jti 블랙리스트 TTL 확인 |
+| VisualVM | ReentrantLock T1/T2 스레드 상태 관찰 |
+| MySQL Workbench | Refresh Token 행 변화 (used=false → true → 삭제) 관찰 |
 
-```bash
-cd backend
-./gradlew bootRun
-```
+---
 
-또는 배포와 유사한 방식으로 실행하려면:
+## 참고
 
-```bash
-cd backend
-./gradlew bootJar
-java -jar build/libs/backend-0.0.1-SNAPSHOT.jar
-```
-
-### 3. Crawler
-
-```bash
-cd crawler
-pip install -r requirements.txt
-```
-
-필요한 스크립트를 실행해 강의/강의계획서 데이터를 수집할 수 있습니다.
-
-## 환경 설정
-
-이 프로젝트는 메일 발송, JWT, 문자 인증, 데이터베이스 연결 등 여러 환경 설정값이 필요합니다.
-
-대표적으로 아래 항목들이 필요합니다.
-- DB 접속 정보
-- 메일 SMTP 정보
-- JWT secret
-- SMS API key/secret
-- 프론트 도메인 및 CORS 허용 origin
-
-실서비스나 포트폴리오 공개용으로 운영할 때는 민감한 값들을 코드에 직접 두지 않고 환경변수로 분리하는 것을 권장합니다.
-
-## 앞으로의 방향
-
-인하평은 단기 과제용으로 끝나는 프로젝트가 아니라,
-- 인증/계정 기능 고도화
-- 크롤러 안정화
-- 취약점 분석 및 보안 개선
-- 테스트 및 운영 환경 정리
-
-를 통해 지속적으로 유지보수하고 발전시키는 것을 목표로 하고 있습니다.
-
-특히 이후에는 웹 취약점 진단과 보안 보완 과정을 함께 정리해, 단순 서비스 개발을 넘어 보안 관점까지 담은 포트폴리오로 확장할 계획입니다.
+- [RFC 6819 §5.2.2.3 — Refresh Token Reuse Detection](https://datatracker.ietf.org/doc/html/rfc6819#section-5.2.2.3)
+- [OAuth 2.0 Security BCP §4.13](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.13)
+- [RFC 9449 — DPoP (리서치, Issue #8)](https://datatracker.ietf.org/doc/html/rfc9449)
