@@ -184,7 +184,8 @@ public class MemberService {
         }
     }
 
-    @Transactional
+    // 재사용 감지·만료 시 발생하는 delete는 예외로 인한 롤백에 휘말리면 안 됨 — noRollbackFor로 커밋 보장
+    @Transactional(noRollbackFor = CustomException.class)
     public LoginResponse doRefreshWithTransaction(String token) {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
                 .orElseThrow(() -> new CustomException(HttpStatus.UNAUTHORIZED, "유효하지 않은 Refresh Token입니다."));
